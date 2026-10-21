@@ -54,13 +54,17 @@
           "P4rRdTus0YLW0-cc9EYGh",
           "T1hHqmzHvmRyS0L6BrYmv",
           "vyyQYBEFJxm7cGPfyaZA4",
-          "IHFipjkRRB_zjkSnax0FO"
+          "IHFipjkRRB_zjkSnax0FO",
+          "AgeColUsrChagok2026a1",
+          "GndColUsrChagok2026a2"
         ],
         "seqColumnIds": [
           "P4rRdTus0YLW0-cc9EYGh",
           "T1hHqmzHvmRyS0L6BrYmv",
           "vyyQYBEFJxm7cGPfyaZA4",
-          "IHFipjkRRB_zjkSnax0FO"
+          "IHFipjkRRB_zjkSnax0FO",
+          "AgeColUsrChagok2026a1",
+          "GndColUsrChagok2026a2"
         ],
         "ui": {
           "x": 111,
@@ -218,6 +222,46 @@
         "meta": {
           "updateAt": 1790745355642,
           "createAt": 1790745310588
+        }
+      },
+      "AgeColUsrChagok2026a1": {
+        "id": "AgeColUsrChagok2026a1",
+        "tableId": "En8tttrmA9aQH9UDOgBgJ",
+        "name": "age",
+        "comment": "나이",
+        "dataType": "INT",
+        "default": "",
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1792563720000,
+          "createAt": 1792563720000
+        }
+      },
+      "GndColUsrChagok2026a2": {
+        "id": "GndColUsrChagok2026a2",
+        "tableId": "En8tttrmA9aQH9UDOgBgJ",
+        "name": "gender",
+        "comment": "성별",
+        "dataType": "VARCHAR",
+        "default": "",
+        "options": 8,
+        "ui": {
+          "keys": 0,
+          "widthName": 60,
+          "widthComment": 60,
+          "widthDataType": 60,
+          "widthDefault": 60
+        },
+        "meta": {
+          "updateAt": 1792563720000,
+          "createAt": 1792563720000
         }
       },
       "AhD2-OUWQF3rmHx6OP4HU": {
