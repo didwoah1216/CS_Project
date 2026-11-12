@@ -1,0 +1,11 @@
+.gradle/
+build/
+out/
+logs/
+*.class
+server.properties
+chagok-server/server.properties
+.idea/
+*.iml
+.DS_Store
+*.log
