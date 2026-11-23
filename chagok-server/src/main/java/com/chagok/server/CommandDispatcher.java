@@ -10,6 +10,7 @@ import com.chagok.server.service.BudgetService;
 import com.chagok.server.service.CompareService;
 import com.chagok.server.service.FeedbackService;
 import com.chagok.server.service.JsonFields;
+import com.chagok.server.service.RecurringService;
 import com.chagok.server.service.SettingService;
 import com.chagok.server.service.StatisticsService;
 import com.chagok.server.service.TestAccountService;
@@ -30,7 +31,8 @@ public class CommandDispatcher {
             Command.STAT_CATEGORY, Command.STAT_MONTHLY,
             Command.FEEDBACK_WARNING, Command.COMPARE_AGE_GROUP,
             Command.SETTING_GET, Command.SETTING_UPDATE,
-            Command.BUDGET_SET, Command.BUDGET_LIST, Command.BUDGET_DELETE, Command.BUDGET_COPY);
+            Command.BUDGET_SET, Command.BUDGET_LIST, Command.BUDGET_DELETE, Command.BUDGET_COPY,
+            Command.RECURRING_RUN);
 
     private final TestAccountService testAccountService;
     private final TransactionService transactionService;
@@ -40,11 +42,13 @@ public class CommandDispatcher {
     private final SettingService settingService;
     private final com.chagok.server.dao.CategoryDAO categoryDAO;
     private final BudgetService budgetService;
+    private final RecurringService recurringService;
 
     public CommandDispatcher(TestAccountService testAccountService, TransactionService transactionService,
                              StatisticsService statisticsService, FeedbackService feedbackService,
                              CompareService compareService, SettingService settingService,
-                             com.chagok.server.dao.CategoryDAO categoryDAO, BudgetService budgetService) {
+                             com.chagok.server.dao.CategoryDAO categoryDAO, BudgetService budgetService,
+                             RecurringService recurringService) {
         this.testAccountService = testAccountService;
         this.transactionService = transactionService;
         this.statisticsService = statisticsService;
@@ -53,6 +57,7 @@ public class CommandDispatcher {
         this.settingService = settingService;
         this.categoryDAO = categoryDAO;
         this.budgetService = budgetService;
+        this.recurringService = recurringService;
     }
 
     public Response dispatch(Request request, ClientSession session) {
@@ -89,6 +94,7 @@ public class CommandDispatcher {
                 case BUDGET_LIST -> budgetService.list(session.getUserId(), requiredYm(request));
                 case BUDGET_DELETE -> budgetService.delete(session.getUserId(), request.getData());
                 case BUDGET_COPY -> budgetService.copy(session.getUserId(), requiredYm(request));
+                case RECURRING_RUN -> recurringService.run(session.getUserId(), requiredYm(request));
                 default -> throw new BizException(ErrorCode.E304, "이후 단계에서 제공되는 기능입니다");
             };
             String message = switch (command) {
@@ -99,6 +105,7 @@ public class CommandDispatcher {
                 case BUDGET_SET -> "저장 완료";
                 case BUDGET_DELETE -> "삭제 완료";
                 case BUDGET_COPY -> "전월 예산을 복사했습니다";
+                case RECURRING_RUN -> "반복 내역을 생성했습니다";
                 default -> "";
             };
             return Response.ok(request, data, message);

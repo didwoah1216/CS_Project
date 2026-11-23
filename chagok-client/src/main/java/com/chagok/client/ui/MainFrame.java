@@ -244,6 +244,7 @@ public class MainFrame extends JFrame {
 
             @Override
             protected Void doInBackground() {
+                app.api.recurringRun(ym);
                 monthBody = app.api.listMonth(ym);
                 warning = app.api.warning(ym);
                 return null;

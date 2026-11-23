@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -219,6 +220,32 @@ class Phase1DatabaseTest {
                     app.api.budgetDelete(item.getBudgetId());
                 }
             }
+        }
+    }
+
+    @Test
+    void recurringRunFillsNovemberAndSkipsExistingOctober() {
+        app.api.testStart();
+        try {
+            JsonObject october = app.api.recurringRun("2026-10");
+            assertEquals(0, october.get("created").getAsInt());
+            assertEquals(6, october.get("skipped").getAsInt());
+            JsonObject november = app.api.recurringRun("2026-11");
+            assertEquals(6, november.get("created").getAsInt());
+            JsonObject again = app.api.recurringRun("2026-11");
+            assertEquals(0, again.get("created").getAsInt());
+            assertEquals(6, again.get("skipped").getAsInt());
+            TransactionDTO rent = app.api.transactions(november.get("items")).stream()
+                    .filter(item -> "월세".equals(item.getMemo())).findFirst().orElseThrow();
+            assertEquals(350_000, rent.getAmount());
+            assertEquals(LocalDate.of(2026, 11, 5), rent.getTransactionDate());
+            assertEquals(5, rent.getParentTxId());
+            assertTrue(rent.isAuto());
+            assertEquals("NONE", rent.getRepeatCycle());
+            assertEquals("FIXED", rent.getFixedType());
+        } finally {
+            JsonObject reset = app.api.resetDummy();
+            assertEquals(2284, reset.get("resetTx").getAsInt());
         }
     }
 

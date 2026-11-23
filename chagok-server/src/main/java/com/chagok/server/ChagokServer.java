@@ -8,6 +8,7 @@ import com.chagok.server.dao.UserSettingDAO;
 import com.chagok.server.service.BudgetService;
 import com.chagok.server.service.CompareService;
 import com.chagok.server.service.FeedbackService;
+import com.chagok.server.service.RecurringService;
 import com.chagok.server.service.SettingService;
 import com.chagok.server.service.StatisticsService;
 import com.chagok.server.service.TestAccountService;
@@ -44,7 +45,8 @@ public class ChagokServer {
                 compare,
                 new SettingService(settings),
                 categories,
-                new BudgetService(new BudgetDAO(), categories, settings));
+                new BudgetService(new BudgetDAO(), categories, settings),
+                new RecurringService(transactions));
     }
 
     public void start() throws IOException {

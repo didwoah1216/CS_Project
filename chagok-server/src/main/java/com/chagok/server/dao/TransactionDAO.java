@@ -129,6 +129,65 @@ public class TransactionDAO {
         }
     }
 
+    public List<TransactionDTO> templates(int userId) {
+        String sql = SELECT + """
+                 WHERE t.user_id=? AND t.is_auto=0 AND t.repeat_cycle <> 'NONE'
+                 ORDER BY t.transaction_id
+                """;
+        try (Connection connection = DBConnection.get();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                List<TransactionDTO> items = new ArrayList<>();
+                while (rs.next()) {
+                    items.add(TxMapper.map(rs));
+                }
+                return items;
+            }
+        } catch (SQLException ex) {
+            throw new DbException(ex);
+        }
+    }
+
+    public boolean existsChild(int parentId, LocalDate date) {
+        String sql = "SELECT 1 FROM `transaction` WHERE parent_tx_id=? AND transaction_date=? LIMIT 1";
+        try (Connection connection = DBConnection.get();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, parentId);
+            ps.setDate(2, Date.valueOf(date));
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException ex) {
+            throw new DbException(ex);
+        }
+    }
+
+    public int insertAuto(int userId, TransactionDTO template, LocalDate date) {
+        String sql = """
+                INSERT INTO `transaction`
+                (user_id, category_id, amount, transaction_date, fixed_type, repeat_cycle, memo, parent_tx_id, is_auto)
+                VALUES (?,?,?,?,?,'NONE',?,?,1)
+                """;
+        try (Connection connection = DBConnection.get();
+             PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setInt(1, userId);
+            ps.setInt(2, template.getCategoryId());
+            ps.setInt(3, template.getAmount());
+            ps.setDate(4, Date.valueOf(date));
+            ps.setString(5, template.getFixedType());
+            ps.setString(6, template.getMemo());
+            ps.setInt(7, template.getTransactionId());
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                keys.next();
+                return keys.getInt(1);
+            }
+        } catch (SQLException ex) {
+            throw new DbException(ex);
+        }
+    }
+
     public List<TransactionDTO> listBetween(int userId, LocalDate from, LocalDate to) {
         String sql = SELECT + """
                  WHERE t.user_id=? AND t.transaction_date BETWEEN ? AND ?
