@@ -265,6 +265,30 @@ public class TransactionDAO {
         }
     }
 
+    public Map<Integer, long[]> weekdayVariable(int userId, LocalDate from, LocalDate to) {
+        String sql = """
+                SELECT DAYOFWEEK(transaction_date) AS d, SUM(amount) AS amount, COUNT(*) AS cnt
+                FROM `transaction`
+                WHERE user_id=? AND fixed_type='VARIABLE' AND transaction_date BETWEEN ? AND ?
+                GROUP BY d
+                """;
+        try (Connection connection = DBConnection.get();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.setDate(2, Date.valueOf(from));
+            ps.setDate(3, Date.valueOf(to));
+            try (ResultSet rs = ps.executeQuery()) {
+                Map<Integer, long[]> rows = new HashMap<>();
+                while (rs.next()) {
+                    rows.put(rs.getInt("d"), new long[]{rs.getLong("amount"), rs.getLong("cnt")});
+                }
+                return rows;
+            }
+        } catch (SQLException ex) {
+            throw new DbException(ex);
+        }
+    }
+
     public MonthlyStatDTO monthlySummary(int userId, String ym) {
         String sql = """
                 SELECT income, fixed_expense, variable_expense

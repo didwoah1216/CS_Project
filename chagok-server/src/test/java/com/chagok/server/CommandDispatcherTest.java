@@ -35,7 +35,7 @@ class CommandDispatcherTest {
         user.setLoginId("test01");
         session.setUser(user);
         Response response = dispatcher.dispatch(
-                request("{\"reqId\":3,\"cmd\":\"STAT_WEEKDAY\",\"data\":{}}"), session);
+                request("{\"reqId\":3,\"cmd\":\"EXPORT_CSV\",\"data\":{}}"), session);
         assertEquals("E304", response.getCode());
     }
 

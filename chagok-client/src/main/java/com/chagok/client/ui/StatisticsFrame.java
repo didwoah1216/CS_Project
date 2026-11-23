@@ -9,6 +9,7 @@ import com.chagok.common.dto.CategoryStatDTO;
 import com.chagok.common.dto.CompareDTO;
 import com.chagok.common.dto.MonthlyStatDTO;
 import com.chagok.common.dto.ScoreDTO;
+import com.chagok.common.dto.WeekdayStatDTO;
 import com.chagok.common.protocol.ErrorCode;
 import com.google.gson.JsonObject;
 
@@ -37,6 +38,8 @@ public class StatisticsFrame extends JFrame {
     private final JPanel peerHolder = holder();
     private final JPanel trendHolder = holder();
     private final JPanel scoreHolder = holder();
+    private final JPanel weekdayHolder = holder();
+    private final JLabel weekdayNote = new JLabel(" ");
     private final JButton prev = new JButton("◀");
     private final JButton next = new JButton("▶");
 
@@ -66,6 +69,11 @@ public class StatisticsFrame extends JFrame {
         tabs.addTab("전월 비교", monthTab);
         tabs.addTab("6개월 추이", trendHolder);
         tabs.addTab("소비 점수", scoreHolder);
+        JPanel weekdayTab = new JPanel(new BorderLayout());
+        weekdayTab.add(weekdayHolder, BorderLayout.CENTER);
+        weekdayNote.setBorder(BorderFactory.createEmptyBorder(8, 12, 12, 12));
+        weekdayTab.add(weekdayNote, BorderLayout.SOUTH);
+        tabs.addTab("요일 패턴", weekdayTab);
         tabs.addTab("또래 비교", peerHolder);
         add(tabs, BorderLayout.CENTER);
         sameGender.addActionListener(e -> load());
@@ -94,6 +102,8 @@ public class StatisticsFrame extends JFrame {
             private String peerError;
             private List<MonthlyStatDTO> trend;
             private ScoreDTO score;
+            private List<WeekdayStatDTO> weekdays;
+            private String weekdayMessage;
 
             @Override
             protected Void doInBackground() {
@@ -107,6 +117,9 @@ public class StatisticsFrame extends JFrame {
                 diffRate = monthly.get("diffRate").isJsonNull() ? null : monthly.get("diffRate").getAsDouble();
                 trend = app.api.months(app.api.trend(ym).get("items"));
                 score = app.api.score(ym, true);
+                JsonObject weekday = app.api.weekday(ym);
+                weekdays = app.api.weekdays(weekday.get("items"));
+                weekdayMessage = weekday.get("message").getAsString();
                 try {
                     compare = app.api.compare(ym, gender);
                 } catch (ApiException ex) {
@@ -129,6 +142,7 @@ public class StatisticsFrame extends JFrame {
                     showMonth();
                     showTrend();
                     showScore();
+                    showWeekday();
                     showPeer();
                 } catch (Exception ex) {
                     Throwable cause = ex.getCause() == null ? ex : ex.getCause();
@@ -206,6 +220,20 @@ public class StatisticsFrame extends JFrame {
                 }
                 scoreHolder.revalidate();
                 scoreHolder.repaint();
+            }
+
+            private void showWeekday() {
+                weekdayHolder.removeAll();
+                boolean empty = weekdays == null || weekdays.stream().allMatch(item -> item.getAmount() == 0);
+                if (empty) {
+                    weekdayHolder.add(message("이 달의 유동지출이 없습니다"));
+                    weekdayNote.setText(" ");
+                } else {
+                    weekdayHolder.add(ChartFactory.weekday(weekdays), BorderLayout.CENTER);
+                    weekdayNote.setText(weekdayMessage == null ? " " : weekdayMessage);
+                }
+                weekdayHolder.revalidate();
+                weekdayHolder.repaint();
             }
 
             private void showPeer() {

@@ -3,6 +3,7 @@ package com.chagok.client.chart;
 import com.chagok.client.util.UiFonts;
 import com.chagok.common.dto.CategoryStatDTO;
 import com.chagok.common.dto.MonthlyStatDTO;
+import com.chagok.common.dto.WeekdayStatDTO;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.labels.StandardPieSectionLabelGenerator;
@@ -113,6 +114,22 @@ public final class ChartFactory {
         renderer.setSeriesPaint(1, new Color(0x7A6A3D));
         renderer.setSeriesPaint(2, new Color(0xE07A3D));
         renderer.setDefaultShapesVisible(true);
+        return panel(chart);
+    }
+
+    public static ChartPanel weekday(List<WeekdayStatDTO> items) {
+        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+        for (WeekdayStatDTO item : items) {
+            dataset.addValue(item.getAmount(), "유동지출", item.getName());
+        }
+        JFreeChart chart = org.jfree.chart.ChartFactory.createBarChart(
+                "요일별 유동지출", "", "원", dataset, PlotOrientation.VERTICAL, false, true, false);
+        applyFont(chart);
+        CategoryPlot plot = chart.getCategoryPlot();
+        plot.setBackgroundPaint(Color.WHITE);
+        plot.setOutlineVisible(false);
+        BarRenderer renderer = (BarRenderer) plot.getRenderer();
+        renderer.setSeriesPaint(0, new Color(0x1F6F6A));
         return panel(chart);
     }
 

@@ -7,6 +7,7 @@ import com.chagok.common.dto.CompareDTO;
 import com.chagok.common.dto.GoalDTO;
 import com.chagok.common.dto.MonthlyStatDTO;
 import com.chagok.common.dto.ScoreDTO;
+import com.chagok.common.dto.WeekdayStatDTO;
 import com.chagok.common.dto.SettingDTO;
 import com.chagok.common.dto.TransactionDTO;
 import com.chagok.common.dto.UserDTO;
@@ -31,13 +32,14 @@ public class ApiClient {
             Command.PING, Command.TEST_START, Command.CATEGORY_LIST, Command.TX_LIST_MONTH, Command.TX_LIST_DAY,
             Command.STAT_CATEGORY, Command.STAT_MONTHLY, Command.FEEDBACK_WARNING, Command.COMPARE_AGE_GROUP,
             Command.SETTING_GET, Command.BUDGET_LIST, Command.RECURRING_RUN, Command.TX_SEARCH,
-            Command.STAT_TREND, Command.FEEDBACK_SCORE, Command.GOAL_LIST);
+            Command.STAT_TREND, Command.FEEDBACK_SCORE, Command.GOAL_LIST, Command.STAT_WEEKDAY);
     private static final Type CATEGORIES = new TypeToken<List<CategoryDTO>>() { }.getType();
     private static final Type BUDGETS = new TypeToken<List<BudgetDTO>>() { }.getType();
     private static final Type TRANSACTIONS = new TypeToken<List<TransactionDTO>>() { }.getType();
     private static final Type STATS = new TypeToken<List<CategoryStatDTO>>() { }.getType();
     private static final Type MONTHS = new TypeToken<List<MonthlyStatDTO>>() { }.getType();
     private static final Type GOALS = new TypeToken<List<GoalDTO>>() { }.getType();
+    private static final Type WEEKDAYS = new TypeToken<List<WeekdayStatDTO>>() { }.getType();
 
     private final ServerConnection connection;
     private long sequence;
@@ -219,6 +221,21 @@ public class ApiClient {
 
     public void goalDelete(int goalId) {
         call(Command.GOAL_DELETE, Map.of("goalId", goalId));
+    }
+
+    public JsonObject weekday(String ym) {
+        return call(Command.STAT_WEEKDAY, Map.of("ym", ym));
+    }
+
+    public JsonObject weekday(String from, String to) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("from", from);
+        body.put("to", to);
+        return call(Command.STAT_WEEKDAY, body);
+    }
+
+    public List<WeekdayStatDTO> weekdays(JsonElement element) {
+        return JsonUtil.fromJson(element, WEEKDAYS);
     }
 
     private JsonObject call(Command command, Object data) {

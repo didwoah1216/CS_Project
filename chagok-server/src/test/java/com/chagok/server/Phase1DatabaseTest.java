@@ -11,6 +11,7 @@ import com.chagok.common.dto.ScoreDTO;
 import com.chagok.common.dto.TransactionDTO;
 import com.chagok.common.dto.UserDTO;
 import com.chagok.common.dto.WarningDTO;
+import com.chagok.common.dto.WeekdayStatDTO;
 import com.chagok.common.protocol.ErrorCode;
 import com.chagok.common.protocol.JsonUtil;
 import com.chagok.server.dao.CategoryDAO;
@@ -228,6 +229,21 @@ class Phase1DatabaseTest {
             }
         }
         assertEquals(2, app.api.goals(app.api.goalList().get("items")).size());
+    }
+
+    @Test
+    void weekdayPatternMatchesTheReportRange() {
+        app.api.testStart();
+        JsonObject body = app.api.weekday("2026-09-01", "2026-10-29");
+        assertEquals(1_527_300, body.get("total").getAsLong());
+        assertEquals(762_600, body.get("weekendAmount").getAsLong());
+        assertEquals(49.9, body.get("weekendRatio").getAsDouble());
+        assertFalse(body.get("concentrated").getAsBoolean());
+        WeekdayStatDTO saturday = app.api.weekdays(body.get("items")).stream()
+                .filter(item -> "토".equals(item.getName())).findFirst().orElseThrow();
+        assertEquals(328_300, saturday.getAmount());
+        assertEquals(21.5, saturday.getRatio());
+        assertTrue(body.get("message").getAsString().contains("기준(50%) 미만"));
     }
 
     @Test
