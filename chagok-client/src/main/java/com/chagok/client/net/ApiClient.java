@@ -4,6 +4,7 @@ import com.chagok.common.dto.BudgetDTO;
 import com.chagok.common.dto.CategoryDTO;
 import com.chagok.common.dto.CategoryStatDTO;
 import com.chagok.common.dto.CompareDTO;
+import com.chagok.common.dto.GoalDTO;
 import com.chagok.common.dto.MonthlyStatDTO;
 import com.chagok.common.dto.ScoreDTO;
 import com.chagok.common.dto.SettingDTO;
@@ -30,12 +31,13 @@ public class ApiClient {
             Command.PING, Command.TEST_START, Command.CATEGORY_LIST, Command.TX_LIST_MONTH, Command.TX_LIST_DAY,
             Command.STAT_CATEGORY, Command.STAT_MONTHLY, Command.FEEDBACK_WARNING, Command.COMPARE_AGE_GROUP,
             Command.SETTING_GET, Command.BUDGET_LIST, Command.RECURRING_RUN, Command.TX_SEARCH,
-            Command.STAT_TREND, Command.FEEDBACK_SCORE);
+            Command.STAT_TREND, Command.FEEDBACK_SCORE, Command.GOAL_LIST);
     private static final Type CATEGORIES = new TypeToken<List<CategoryDTO>>() { }.getType();
     private static final Type BUDGETS = new TypeToken<List<BudgetDTO>>() { }.getType();
     private static final Type TRANSACTIONS = new TypeToken<List<TransactionDTO>>() { }.getType();
     private static final Type STATS = new TypeToken<List<CategoryStatDTO>>() { }.getType();
     private static final Type MONTHS = new TypeToken<List<MonthlyStatDTO>>() { }.getType();
+    private static final Type GOALS = new TypeToken<List<GoalDTO>>() { }.getType();
 
     private final ServerConnection connection;
     private long sequence;
@@ -185,6 +187,38 @@ public class ApiClient {
         body.put("save", save);
         JsonObject data = call(Command.FEEDBACK_SCORE, body);
         return JsonUtil.fromJson(data.get("score"), ScoreDTO.class);
+    }
+
+    public JsonObject goalList() {
+        return call(Command.GOAL_LIST, Map.of());
+    }
+
+    public List<GoalDTO> goals(JsonElement element) {
+        return JsonUtil.fromJson(element, GOALS);
+    }
+
+    public GoalDTO goalAdd(String name, int targetAmount, String startDate, String targetDate) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("goalName", name);
+        body.put("targetAmount", targetAmount);
+        body.put("startDate", startDate);
+        body.put("targetDate", targetDate);
+        return JsonUtil.fromJson(call(Command.GOAL_ADD, body).get("goal"), GoalDTO.class);
+    }
+
+    public GoalDTO goalDeposit(int goalId, int amount, String depositDate, String memo) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("goalId", goalId);
+        body.put("amount", amount);
+        body.put("depositDate", depositDate);
+        if (memo != null && !memo.isBlank()) {
+            body.put("memo", memo);
+        }
+        return JsonUtil.fromJson(call(Command.GOAL_DEPOSIT, body).get("goal"), GoalDTO.class);
+    }
+
+    public void goalDelete(int goalId) {
+        call(Command.GOAL_DELETE, Map.of("goalId", goalId));
     }
 
     private JsonObject call(Command command, Object data) {

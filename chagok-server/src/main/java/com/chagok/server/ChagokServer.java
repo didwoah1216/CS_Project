@@ -3,12 +3,14 @@ package com.chagok.server;
 import com.chagok.server.dao.BudgetDAO;
 import com.chagok.server.dao.CategoryDAO;
 import com.chagok.server.dao.HabitScoreDAO;
+import com.chagok.server.dao.SavingGoalDAO;
 import com.chagok.server.dao.TransactionDAO;
 import com.chagok.server.dao.UserDAO;
 import com.chagok.server.dao.UserSettingDAO;
 import com.chagok.server.service.BudgetService;
 import com.chagok.server.service.CompareService;
 import com.chagok.server.service.FeedbackService;
+import com.chagok.server.service.GoalService;
 import com.chagok.server.service.RecurringService;
 import com.chagok.server.service.SettingService;
 import com.chagok.server.service.StatisticsService;
@@ -48,7 +50,8 @@ public class ChagokServer {
                 new SettingService(settings),
                 categories,
                 new BudgetService(budgets, categories, settings),
-                new RecurringService(transactions));
+                new RecurringService(transactions),
+                new GoalService(new SavingGoalDAO()));
     }
 
     public void start() throws IOException {

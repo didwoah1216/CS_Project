@@ -164,6 +164,7 @@ public class MainFrame extends JFrame {
         JButton settings = new JButton("설정");
         JButton budget = new JButton("예산");
         JButton search = new JButton("검색");
+        JButton goal = new JButton("저축 목표");
         add.addActionListener(e -> openEditor(null));
         stats.addActionListener(e -> openStats());
         edit.addActionListener(e -> editSelected());
@@ -171,10 +172,12 @@ public class MainFrame extends JFrame {
         settings.addActionListener(e -> new SettingsDialog(this, app, this::reload).setVisible(true));
         budget.addActionListener(e -> new BudgetFrame(app, month).setVisible(true));
         search.addActionListener(e -> new SearchFrame(app, month).setVisible(true));
+        goal.addActionListener(e -> new GoalFrame(app).setVisible(true));
         panel.add(add);
         panel.add(edit);
         panel.add(delete);
         panel.add(budget);
+        panel.add(goal);
         panel.add(search);
         panel.add(stats);
         panel.add(settings);

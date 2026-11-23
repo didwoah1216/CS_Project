@@ -6,6 +6,7 @@ import com.chagok.client.net.ClientConfig;
 import com.chagok.common.dto.BudgetDTO;
 import com.chagok.common.dto.CategoryStatDTO;
 import com.chagok.common.dto.CompareDTO;
+import com.chagok.common.dto.GoalDTO;
 import com.chagok.common.dto.ScoreDTO;
 import com.chagok.common.dto.TransactionDTO;
 import com.chagok.common.dto.UserDTO;
@@ -17,6 +18,8 @@ import com.chagok.server.dao.TransactionDAO;
 import com.chagok.server.dao.UserDAO;
 import com.chagok.server.dao.UserSettingDAO;
 import com.chagok.server.service.CompareService;
+import com.chagok.common.util.DateUtil;
+import com.chagok.common.util.GoalPolicy;
 import com.chagok.server.util.DBConnection;
 import com.chagok.server.util.ServerConfig;
 import com.google.gson.JsonObject;
@@ -187,6 +190,44 @@ class Phase1DatabaseTest {
                 statement.executeUpdate("DELETE FROM habit_score WHERE user_id=1 AND score_month='2026-10'");
             }
         }
+    }
+
+    @Test
+    void savingGoalsMatchTheSampleAndAcceptADeposit() {
+        app.api.testStart();
+        List<GoalDTO> items = app.api.goals(app.api.goalList().get("items"));
+        assertEquals(2, items.size());
+        GoalDTO trip = items.stream().filter(item -> "겨울방학 제주도 여행".equals(item.getGoalName())).findFirst().orElseThrow();
+        assertEquals(500_000, trip.getTargetAmount());
+        assertEquals(120_000, trip.getSavedAmount());
+        assertEquals(24.0, trip.getProgress());
+        assertEquals("ACTIVE", trip.getStatus());
+        assertEquals(2, trip.getDeposits().size());
+        assertEquals(GoalPolicy.monthlyNeed(120_000, 500_000, DateUtil.today(), trip.getTargetDate()), trip.getMonthlyNeed());
+        assertEquals(GoalPolicy.dDay(DateUtil.today(), trip.getTargetDate()), trip.getDDay());
+        GoalDTO created = null;
+        try {
+            ApiException past = assertThrows(ApiException.class, () -> app.api.goalAdd(
+                    "잘못된 일정", 10_000, "2026-12-01", "2026-11-01"));
+            assertEquals(ErrorCode.E304, past.getCode());
+            created = app.api.goalAdd("시험용 비상금", 100_000, "2026-11-01", "2027-05-01");
+            assertEquals(0, created.getSavedAmount());
+            GoalDTO after = app.api.goalDeposit(created.getGoalId(), 40_000, "2026-11-23", "첫 입금");
+            assertEquals(40_000, after.getSavedAmount());
+            assertEquals(40.0, after.getProgress());
+            assertEquals("ACTIVE", after.getStatus());
+            GoalDTO done = app.api.goalDeposit(created.getGoalId(), 60_000, "2026-11-23", null);
+            assertEquals(100_000, done.getSavedAmount());
+            assertEquals("ACHIEVED", done.getStatus());
+            ApiException overdraw = assertThrows(ApiException.class,
+                    () -> app.api.goalDeposit(done.getGoalId(), -200_000, "2026-11-23", "과한 인출"));
+            assertEquals(ErrorCode.E304, overdraw.getCode());
+        } finally {
+            if (created != null && created.getGoalId() != null) {
+                app.api.goalDelete(created.getGoalId());
+            }
+        }
+        assertEquals(2, app.api.goals(app.api.goalList().get("items")).size());
     }
 
     @Test
