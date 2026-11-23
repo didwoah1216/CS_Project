@@ -6,6 +6,7 @@ import com.chagok.client.net.ClientConfig;
 import com.chagok.common.dto.BudgetDTO;
 import com.chagok.common.dto.CategoryStatDTO;
 import com.chagok.common.dto.CompareDTO;
+import com.chagok.common.dto.ScoreDTO;
 import com.chagok.common.dto.TransactionDTO;
 import com.chagok.common.dto.UserDTO;
 import com.chagok.common.dto.WarningDTO;
@@ -35,6 +36,7 @@ import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -144,6 +146,47 @@ class Phase1DatabaseTest {
         assertEquals(776_300, months.get(5).getVariable());
         assertEquals(1_282_300, months.get(5).getIncome());
         assertEquals(429_400, months.get(5).getFixed());
+    }
+
+    @Test
+    void habitScoreMatchesOctoberAndSeptember() throws Exception {
+        app.api.testStart();
+        try {
+            ScoreDTO october = app.api.score("2026-10", false);
+            assertEquals(33, october.getScore());
+            assertEquals("D", october.getGrade());
+            assertEquals(91.0, october.getFlexRatio());
+            assertEquals(44, october.getPrevScore());
+            assertEquals(6, october.getItems().get(0).getPoint());
+            assertEquals(17, october.getItems().get(1).getPoint());
+            assertEquals(10, october.getItems().get(2).getPoint());
+            assertEquals(0, october.getItems().get(3).getPoint());
+            ScoreDTO september = app.api.score("2026-09", false);
+            assertEquals(44, september.getScore());
+            assertEquals("D", september.getGrade());
+            assertEquals(74.9, september.getFlexRatio());
+            assertNull(september.getPrevScore());
+            assertEquals(17, september.getItems().get(0).getPoint());
+            assertEquals(12, september.getItems().get(1).getPoint());
+            assertEquals(5, september.getItems().get(3).getPoint());
+            app.api.score("2026-10", true);
+            try (Connection connection = DBConnection.get();
+                 Statement statement = connection.createStatement();
+                 ResultSet rs = statement.executeQuery("""
+                         SELECT score, grade, flex_ratio FROM habit_score
+                         WHERE user_id=1 AND score_month='2026-10'
+                         """)) {
+                assertTrue(rs.next());
+                assertEquals(33, rs.getInt("score"));
+                assertEquals("D", rs.getString("grade"));
+                assertEquals(91.0, rs.getDouble("flex_ratio"));
+            }
+        } finally {
+            try (Connection connection = DBConnection.get();
+                 Statement statement = connection.createStatement()) {
+                statement.executeUpdate("DELETE FROM habit_score WHERE user_id=1 AND score_month='2026-10'");
+            }
+        }
     }
 
     @Test

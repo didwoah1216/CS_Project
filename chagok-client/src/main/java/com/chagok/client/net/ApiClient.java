@@ -5,6 +5,7 @@ import com.chagok.common.dto.CategoryDTO;
 import com.chagok.common.dto.CategoryStatDTO;
 import com.chagok.common.dto.CompareDTO;
 import com.chagok.common.dto.MonthlyStatDTO;
+import com.chagok.common.dto.ScoreDTO;
 import com.chagok.common.dto.SettingDTO;
 import com.chagok.common.dto.TransactionDTO;
 import com.chagok.common.dto.UserDTO;
@@ -29,7 +30,7 @@ public class ApiClient {
             Command.PING, Command.TEST_START, Command.CATEGORY_LIST, Command.TX_LIST_MONTH, Command.TX_LIST_DAY,
             Command.STAT_CATEGORY, Command.STAT_MONTHLY, Command.FEEDBACK_WARNING, Command.COMPARE_AGE_GROUP,
             Command.SETTING_GET, Command.BUDGET_LIST, Command.RECURRING_RUN, Command.TX_SEARCH,
-            Command.STAT_TREND);
+            Command.STAT_TREND, Command.FEEDBACK_SCORE);
     private static final Type CATEGORIES = new TypeToken<List<CategoryDTO>>() { }.getType();
     private static final Type BUDGETS = new TypeToken<List<BudgetDTO>>() { }.getType();
     private static final Type TRANSACTIONS = new TypeToken<List<TransactionDTO>>() { }.getType();
@@ -176,6 +177,14 @@ public class ApiClient {
 
     public List<MonthlyStatDTO> months(JsonElement element) {
         return JsonUtil.fromJson(element, MONTHS);
+    }
+
+    public ScoreDTO score(String ym, boolean save) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("ym", ym);
+        body.put("save", save);
+        JsonObject data = call(Command.FEEDBACK_SCORE, body);
+        return JsonUtil.fromJson(data.get("score"), ScoreDTO.class);
     }
 
     private JsonObject call(Command command, Object data) {

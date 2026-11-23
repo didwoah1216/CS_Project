@@ -8,6 +8,7 @@ import com.chagok.client.util.Money;
 import com.chagok.common.dto.CategoryStatDTO;
 import com.chagok.common.dto.CompareDTO;
 import com.chagok.common.dto.MonthlyStatDTO;
+import com.chagok.common.dto.ScoreDTO;
 import com.chagok.common.protocol.ErrorCode;
 import com.google.gson.JsonObject;
 
@@ -35,6 +36,7 @@ public class StatisticsFrame extends JFrame {
     private final JPanel barHolder = holder();
     private final JPanel peerHolder = holder();
     private final JPanel trendHolder = holder();
+    private final JPanel scoreHolder = holder();
     private final JButton prev = new JButton("◀");
     private final JButton next = new JButton("▶");
 
@@ -63,6 +65,7 @@ public class StatisticsFrame extends JFrame {
         monthTab.add(diff, BorderLayout.SOUTH);
         tabs.addTab("전월 비교", monthTab);
         tabs.addTab("6개월 추이", trendHolder);
+        tabs.addTab("소비 점수", scoreHolder);
         tabs.addTab("또래 비교", peerHolder);
         add(tabs, BorderLayout.CENTER);
         sameGender.addActionListener(e -> load());
@@ -90,6 +93,7 @@ public class StatisticsFrame extends JFrame {
             private CompareDTO compare;
             private String peerError;
             private List<MonthlyStatDTO> trend;
+            private ScoreDTO score;
 
             @Override
             protected Void doInBackground() {
@@ -102,6 +106,7 @@ public class StatisticsFrame extends JFrame {
                 diffAmount = monthly.get("diffAmount").getAsLong();
                 diffRate = monthly.get("diffRate").isJsonNull() ? null : monthly.get("diffRate").getAsDouble();
                 trend = app.api.months(app.api.trend(ym).get("items"));
+                score = app.api.score(ym, true);
                 try {
                     compare = app.api.compare(ym, gender);
                 } catch (ApiException ex) {
@@ -123,6 +128,7 @@ public class StatisticsFrame extends JFrame {
                     showPie();
                     showMonth();
                     showTrend();
+                    showScore();
                     showPeer();
                 } catch (Exception ex) {
                     Throwable cause = ex.getCause() == null ? ex : ex.getCause();
@@ -169,6 +175,37 @@ public class StatisticsFrame extends JFrame {
                 }
                 trendHolder.revalidate();
                 trendHolder.repaint();
+            }
+
+            private void showScore() {
+                scoreHolder.removeAll();
+                if (score == null) {
+                    scoreHolder.add(message("점수를 계산하지 못했습니다"));
+                } else {
+                    StringBuilder html = new StringBuilder("<html><div style='padding:12px;font-family:sans-serif'>");
+                    html.append("<div style='font-size:22px'><b>").append(score.getScore()).append("점 ")
+                            .append(score.getGrade()).append("</b></div>");
+                    if (score.getFlexRatio() != null) {
+                        html.append("<div>유동비율 ").append(String.format("%.1f", score.getFlexRatio())).append("%</div>");
+                    }
+                    if (score.getItems() != null) {
+                        for (ScoreDTO.ScoreItem item : score.getItems()) {
+                            html.append("<div>").append(item.getName()).append(" ")
+                                    .append(item.getPoint()).append(" / ").append(item.getMax()).append("</div>");
+                        }
+                    }
+                    html.append("<div style='margin-top:8px'>").append(score.getMessage() == null ? "" : score.getMessage())
+                            .append("</div>");
+                    if (score.getPrevScore() != null) {
+                        html.append("<div>저장된 전월 점수 ").append(score.getPrevScore()).append("점</div>");
+                    }
+                    html.append("</div></html>");
+                    JLabel label = new JLabel(html.toString());
+                    label.setVerticalAlignment(JLabel.TOP);
+                    scoreHolder.add(label, BorderLayout.NORTH);
+                }
+                scoreHolder.revalidate();
+                scoreHolder.repaint();
             }
 
             private void showPeer() {

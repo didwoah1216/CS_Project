@@ -2,6 +2,7 @@ package com.chagok.server;
 
 import com.chagok.server.dao.BudgetDAO;
 import com.chagok.server.dao.CategoryDAO;
+import com.chagok.server.dao.HabitScoreDAO;
 import com.chagok.server.dao.TransactionDAO;
 import com.chagok.server.dao.UserDAO;
 import com.chagok.server.dao.UserSettingDAO;
@@ -35,17 +36,18 @@ public class ChagokServer {
         UserDAO users = new UserDAO();
         CategoryDAO categories = new CategoryDAO();
         TransactionDAO transactions = new TransactionDAO();
+        BudgetDAO budgets = new BudgetDAO();
         UserSettingDAO settings = new UserSettingDAO();
         CompareService compare = new CompareService(users, categories, transactions, settings);
         this.dispatcher = new CommandDispatcher(
                 new TestAccountService(users, new DummyDataLoader()),
                 new TransactionService(transactions, categories),
                 new StatisticsService(transactions, categories),
-                new FeedbackService(transactions, settings, compare),
+                new FeedbackService(transactions, settings, compare, budgets, new HabitScoreDAO()),
                 compare,
                 new SettingService(settings),
                 categories,
-                new BudgetService(new BudgetDAO(), categories, settings),
+                new BudgetService(budgets, categories, settings),
                 new RecurringService(transactions));
     }
 

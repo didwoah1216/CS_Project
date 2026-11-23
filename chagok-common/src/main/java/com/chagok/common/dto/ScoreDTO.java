@@ -11,6 +11,7 @@ public class ScoreDTO {
     private List<ScoreItem> items = new ArrayList<>();
     private String message;
     private Integer prevScore;
+    private Double flexRatio;
 
     public String getYm() {
         return ym;
@@ -58,6 +59,14 @@ public class ScoreDTO {
 
     public void setPrevScore(Integer prevScore) {
         this.prevScore = prevScore;
+    }
+
+    public Double getFlexRatio() {
+        return flexRatio;
+    }
+
+    public void setFlexRatio(Double flexRatio) {
+        this.flexRatio = flexRatio;
     }
 
     public static class ScoreItem {
