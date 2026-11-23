@@ -2,6 +2,7 @@ package com.chagok.server.dao;
 
 import com.chagok.common.dto.MonthlyStatDTO;
 import com.chagok.common.dto.TransactionDTO;
+import com.chagok.common.util.SearchPolicy;
 import com.chagok.server.util.DBConnection;
 import com.chagok.server.util.DbException;
 
@@ -210,6 +211,60 @@ public class TransactionDAO {
         }
     }
 
+    public List<TransactionDTO> search(int userId, LocalDate from, LocalDate to, Integer categoryId,
+                                       Integer minAmount, Integer maxAmount, String keyword,
+                                       String type, String fixedType) {
+        StringBuilder sql = new StringBuilder(SELECT);
+        sql.append(" WHERE t.user_id=?");
+        List<Object> args = new ArrayList<>();
+        args.add(userId);
+        if (from != null) {
+            sql.append(" AND t.transaction_date BETWEEN ? AND ?");
+            args.add(Date.valueOf(from));
+            args.add(Date.valueOf(to));
+        }
+        if (categoryId != null) {
+            sql.append(" AND t.category_id=?");
+            args.add(categoryId);
+        }
+        if (minAmount != null) {
+            sql.append(" AND t.amount>=?");
+            args.add(minAmount);
+        }
+        if (maxAmount != null) {
+            sql.append(" AND t.amount<=?");
+            args.add(maxAmount);
+        }
+        if (keyword != null) {
+            sql.append(" AND (t.memo LIKE ? ESCAPE '\\\\' OR c.name LIKE ? ESCAPE '\\\\')");
+            String pattern = SearchPolicy.likePattern(keyword);
+            args.add(pattern);
+            args.add(pattern);
+        }
+        if (type != null) {
+            sql.append(" AND c.type=?");
+            args.add(type);
+        }
+        if (fixedType != null) {
+            sql.append(" AND t.fixed_type=?");
+            args.add(fixedType);
+        }
+        sql.append(" ORDER BY t.transaction_date DESC, t.transaction_id DESC");
+        try (Connection connection = DBConnection.get();
+             PreparedStatement ps = connection.prepareStatement(sql.toString())) {
+            bindArgs(ps, args);
+            try (ResultSet rs = ps.executeQuery()) {
+                List<TransactionDTO> items = new ArrayList<>();
+                while (rs.next()) {
+                    items.add(TxMapper.map(rs));
+                }
+                return items;
+            }
+        } catch (SQLException ex) {
+            throw new DbException(ex);
+        }
+    }
+
     public MonthlyStatDTO monthlySummary(int userId, String ym) {
         String sql = """
                 SELECT income, fixed_expense, variable_expense
@@ -304,6 +359,19 @@ public class TransactionDAO {
             }
         } catch (SQLException ex) {
             throw new DbException(ex);
+        }
+    }
+
+    private static void bindArgs(PreparedStatement ps, List<Object> args) throws SQLException {
+        int index = 1;
+        for (Object arg : args) {
+            if (arg instanceof Integer number) {
+                ps.setInt(index++, number);
+            } else if (arg instanceof Date date) {
+                ps.setDate(index++, date);
+            } else {
+                ps.setString(index++, String.valueOf(arg));
+            }
         }
     }
 

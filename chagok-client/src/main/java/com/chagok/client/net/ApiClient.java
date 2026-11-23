@@ -28,7 +28,7 @@ public class ApiClient {
     private static final Set<Command> IDEMPOTENT = EnumSet.of(
             Command.PING, Command.TEST_START, Command.CATEGORY_LIST, Command.TX_LIST_MONTH, Command.TX_LIST_DAY,
             Command.STAT_CATEGORY, Command.STAT_MONTHLY, Command.FEEDBACK_WARNING, Command.COMPARE_AGE_GROUP,
-            Command.SETTING_GET, Command.BUDGET_LIST, Command.RECURRING_RUN);
+            Command.SETTING_GET, Command.BUDGET_LIST, Command.RECURRING_RUN, Command.TX_SEARCH);
     private static final Type CATEGORIES = new TypeToken<List<CategoryDTO>>() { }.getType();
     private static final Type BUDGETS = new TypeToken<List<BudgetDTO>>() { }.getType();
     private static final Type TRANSACTIONS = new TypeToken<List<TransactionDTO>>() { }.getType();
@@ -162,6 +162,10 @@ public class ApiClient {
 
     public JsonObject recurringRun(String ym) {
         return call(Command.RECURRING_RUN, Map.of("ym", ym));
+    }
+
+    public JsonObject search(Map<String, Object> fields) {
+        return call(Command.TX_SEARCH, fields);
     }
 
     private JsonObject call(Command command, Object data) {

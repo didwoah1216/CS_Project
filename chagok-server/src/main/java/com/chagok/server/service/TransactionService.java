@@ -7,6 +7,7 @@ import com.chagok.common.protocol.BizException;
 import com.chagok.common.protocol.ErrorCode;
 import com.chagok.common.util.DateUtil;
 import com.chagok.common.util.InputValidator;
+import com.chagok.common.util.SearchPolicy;
 import com.chagok.server.dao.CategoryDAO;
 import com.chagok.server.dao.TransactionDAO;
 import com.chagok.server.util.ServerLogger;
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class TransactionService {
     private final TransactionDAO transactionDAO;
@@ -83,6 +85,64 @@ public class TransactionService {
         LocalDate date = InputValidator.requireDate(dateText, dateText != null && !dateText.isBlank());
         List<TransactionDTO> items = transactionDAO.listBetween(userId, date, date);
         return Map.of("items", items);
+    }
+
+    public Map<String, Object> search(int userId, JsonObject data) {
+        LocalDate from = optionalDate(data, "from");
+        LocalDate to = optionalDate(data, "to");
+        if ((from == null) != (to == null)) {
+            throw new BizException(ErrorCode.E102, "시작일과 종료일을 함께 입력해야 합니다");
+        }
+        SearchPolicy.requireChronological(from, to);
+        Integer categoryId = null;
+        if (JsonFields.present(data, "categoryId")) {
+            categoryId = JsonFields.integer(data, "categoryId");
+            InputValidator.requireCategory(categoryId);
+            if (categoryDAO.findById(categoryId) == null) {
+                throw new BizException(ErrorCode.E103, "카테고리를 찾을 수 없습니다");
+            }
+        }
+        Integer min = SearchPolicy.amountBound(JsonFields.integer(data, "minAmount"),
+                JsonFields.present(data, "minAmount"), "최소 금액");
+        Integer max = SearchPolicy.amountBound(JsonFields.integer(data, "maxAmount"),
+                JsonFields.present(data, "maxAmount"), "최대 금액");
+        SearchPolicy.requireMinNotAboveMax(min, max);
+        String type = optionalToken(data, "type", Set.of("INCOME", "EXPENSE"), "구분은 INCOME 또는 EXPENSE 여야 합니다");
+        String fixed = optionalToken(data, "fixedType", Set.of("FIXED", "VARIABLE"),
+                "지출 유형은 FIXED 또는 VARIABLE 이어야 합니다");
+        String keyword = SearchPolicy.keyword(JsonFields.text(data, "keyword"));
+        List<TransactionDTO> items = transactionDAO.search(
+                userId, from, to, categoryId, min, max, keyword, type, fixed);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("items", items);
+        body.put("count", items.size());
+        return body;
+    }
+
+    private static LocalDate optionalDate(JsonObject data, String field) {
+        if (!JsonFields.present(data, field)) {
+            return null;
+        }
+        String text = JsonFields.text(data, field);
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        return InputValidator.requireDate(text, true);
+    }
+
+    private static String optionalToken(JsonObject data, String field, Set<String> allowed, String message) {
+        if (!JsonFields.present(data, field)) {
+            return null;
+        }
+        String value = JsonFields.text(data, field);
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String token = value.trim();
+        if (!allowed.contains(token)) {
+            throw new BizException(ErrorCode.E103, message);
+        }
+        return token;
     }
 
     private TransactionDTO read(JsonObject data, Integer transactionId) {

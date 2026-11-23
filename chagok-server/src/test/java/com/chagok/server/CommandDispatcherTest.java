@@ -35,7 +35,7 @@ class CommandDispatcherTest {
         user.setLoginId("test01");
         session.setUser(user);
         Response response = dispatcher.dispatch(
-                request("{\"reqId\":3,\"cmd\":\"TX_SEARCH\",\"data\":{}}"), session);
+                request("{\"reqId\":3,\"cmd\":\"STAT_TREND\",\"data\":{}}"), session);
         assertEquals("E304", response.getCode());
     }
 

@@ -27,7 +27,7 @@ public class CommandDispatcher {
     private static final Set<Command> PHASE1 = EnumSet.of(
             Command.PING, Command.TEST_START, Command.DUMMY_RESET,
             Command.CATEGORY_LIST, Command.TX_ADD, Command.TX_UPDATE, Command.TX_DELETE,
-            Command.TX_LIST_MONTH, Command.TX_LIST_DAY,
+            Command.TX_LIST_MONTH, Command.TX_LIST_DAY, Command.TX_SEARCH,
             Command.STAT_CATEGORY, Command.STAT_MONTHLY,
             Command.FEEDBACK_WARNING, Command.COMPARE_AGE_GROUP,
             Command.SETTING_GET, Command.SETTING_UPDATE,
@@ -82,6 +82,7 @@ public class CommandDispatcher {
                 case TX_DELETE -> transactionService.delete(session.getUserId(), request.getData());
                 case TX_LIST_MONTH -> transactionService.listMonth(session.getUserId(), requiredYm(request));
                 case TX_LIST_DAY -> transactionService.listDay(session.getUserId(), requiredText(request, "date", "날짜"));
+                case TX_SEARCH -> transactionService.search(session.getUserId(), request.getData());
                 case STAT_CATEGORY -> statisticsService.categoryStat(session.getUserId(), requiredYm(request),
                         request.getString("type"));
                 case STAT_MONTHLY -> statisticsService.monthly(session.getUserId(), requiredYm(request));

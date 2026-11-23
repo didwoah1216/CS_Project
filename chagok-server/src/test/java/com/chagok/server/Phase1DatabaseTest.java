@@ -249,6 +249,36 @@ class Phase1DatabaseTest {
         }
     }
 
+    @Test
+    void searchFiltersPeriodCategoryAmountAndKeyword() {
+        app.api.testStart();
+        Map<String, Object> food = new LinkedHashMap<>();
+        food.put("from", "2026-10-01");
+        food.put("to", "2026-10-31");
+        food.put("keyword", "학식");
+        food.put("categoryId", 5);
+        JsonObject meals = app.api.search(food);
+        assertEquals(4, meals.get("count").getAsInt());
+        for (TransactionDTO item : app.api.transactions(meals.get("items"))) {
+            assertEquals("식비", item.getCategoryName());
+            assertTrue(item.getMemo().contains("학식"));
+        }
+        Map<String, Object> band = new LinkedHashMap<>();
+        band.put("from", "2026-10-01");
+        band.put("to", "2026-10-31");
+        band.put("minAmount", 300_000);
+        band.put("maxAmount", 350_000);
+        assertEquals(2, app.api.search(band).get("count").getAsInt());
+        Map<String, Object> none = new LinkedHashMap<>();
+        none.put("keyword", "없는메모xyz");
+        assertEquals(0, app.api.search(none).get("count").getAsInt());
+        Map<String, Object> reversed = new LinkedHashMap<>();
+        reversed.put("from", "2026-10-31");
+        reversed.put("to", "2026-10-01");
+        ApiException bad = assertThrows(ApiException.class, () -> app.api.search(reversed));
+        assertEquals(ErrorCode.E103, bad.getCode());
+    }
+
     private static void assertBudget(List<BudgetDTO> items, String name, int amount, long used,
                                      double rate, String status) {
         BudgetDTO item = items.stream().filter(row -> name.equals(row.getCategoryName())).findFirst().orElseThrow();
