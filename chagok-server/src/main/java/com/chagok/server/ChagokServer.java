@@ -1,9 +1,11 @@
 package com.chagok.server;
 
+import com.chagok.server.dao.BudgetDAO;
 import com.chagok.server.dao.CategoryDAO;
 import com.chagok.server.dao.TransactionDAO;
 import com.chagok.server.dao.UserDAO;
 import com.chagok.server.dao.UserSettingDAO;
+import com.chagok.server.service.BudgetService;
 import com.chagok.server.service.CompareService;
 import com.chagok.server.service.FeedbackService;
 import com.chagok.server.service.SettingService;
@@ -41,7 +43,8 @@ public class ChagokServer {
                 new FeedbackService(transactions, settings, compare),
                 compare,
                 new SettingService(settings),
-                categories);
+                categories,
+                new BudgetService(new BudgetDAO(), categories, settings));
     }
 
     public void start() throws IOException {

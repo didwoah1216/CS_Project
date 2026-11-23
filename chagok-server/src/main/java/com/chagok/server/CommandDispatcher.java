@@ -6,6 +6,7 @@ import com.chagok.common.protocol.ErrorCode;
 import com.chagok.common.protocol.Request;
 import com.chagok.common.protocol.Response;
 import com.chagok.common.util.DateUtil;
+import com.chagok.server.service.BudgetService;
 import com.chagok.server.service.CompareService;
 import com.chagok.server.service.FeedbackService;
 import com.chagok.server.service.JsonFields;
@@ -28,7 +29,8 @@ public class CommandDispatcher {
             Command.TX_LIST_MONTH, Command.TX_LIST_DAY,
             Command.STAT_CATEGORY, Command.STAT_MONTHLY,
             Command.FEEDBACK_WARNING, Command.COMPARE_AGE_GROUP,
-            Command.SETTING_GET, Command.SETTING_UPDATE);
+            Command.SETTING_GET, Command.SETTING_UPDATE,
+            Command.BUDGET_SET, Command.BUDGET_LIST, Command.BUDGET_DELETE, Command.BUDGET_COPY);
 
     private final TestAccountService testAccountService;
     private final TransactionService transactionService;
@@ -37,11 +39,12 @@ public class CommandDispatcher {
     private final CompareService compareService;
     private final SettingService settingService;
     private final com.chagok.server.dao.CategoryDAO categoryDAO;
+    private final BudgetService budgetService;
 
     public CommandDispatcher(TestAccountService testAccountService, TransactionService transactionService,
                              StatisticsService statisticsService, FeedbackService feedbackService,
                              CompareService compareService, SettingService settingService,
-                             com.chagok.server.dao.CategoryDAO categoryDAO) {
+                             com.chagok.server.dao.CategoryDAO categoryDAO, BudgetService budgetService) {
         this.testAccountService = testAccountService;
         this.transactionService = transactionService;
         this.statisticsService = statisticsService;
@@ -49,6 +52,7 @@ public class CommandDispatcher {
         this.compareService = compareService;
         this.settingService = settingService;
         this.categoryDAO = categoryDAO;
+        this.budgetService = budgetService;
     }
 
     public Response dispatch(Request request, ClientSession session) {
@@ -81,6 +85,10 @@ public class CommandDispatcher {
                         session.getUserId(), requiredYm(request), optionalBool(request.getData(), "sameGender")));
                 case SETTING_GET -> settingService.get(session.getUserId());
                 case SETTING_UPDATE -> settingService.update(session.getUserId(), request.getData());
+                case BUDGET_SET -> budgetService.set(session.getUserId(), request.getData());
+                case BUDGET_LIST -> budgetService.list(session.getUserId(), requiredYm(request));
+                case BUDGET_DELETE -> budgetService.delete(session.getUserId(), request.getData());
+                case BUDGET_COPY -> budgetService.copy(session.getUserId(), requiredYm(request));
                 default -> throw new BizException(ErrorCode.E304, "이후 단계에서 제공되는 기능입니다");
             };
             String message = switch (command) {
@@ -88,6 +96,9 @@ public class CommandDispatcher {
                 case TX_DELETE -> "삭제 완료";
                 case DUMMY_RESET -> "더미 데이터를 초기화했습니다";
                 case SETTING_UPDATE -> "설정을 저장했습니다";
+                case BUDGET_SET -> "저장 완료";
+                case BUDGET_DELETE -> "삭제 완료";
+                case BUDGET_COPY -> "전월 예산을 복사했습니다";
                 default -> "";
             };
             return Response.ok(request, data, message);

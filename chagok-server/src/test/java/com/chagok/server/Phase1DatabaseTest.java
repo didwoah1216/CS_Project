@@ -3,6 +3,7 @@ package com.chagok.server;
 import com.chagok.client.AppContext;
 import com.chagok.client.net.ApiException;
 import com.chagok.client.net.ClientConfig;
+import com.chagok.common.dto.BudgetDTO;
 import com.chagok.common.dto.CategoryStatDTO;
 import com.chagok.common.dto.CompareDTO;
 import com.chagok.common.dto.TransactionDTO;
@@ -27,6 +28,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -172,6 +174,61 @@ class Phase1DatabaseTest {
             assertEquals(13, reset.get("resetUsers").getAsInt());
             assertEquals(2284, reset.get("resetTx").getAsInt());
         }
+    }
+
+    @Test
+    void octoberBudgetsMatchTheReport() {
+        app.api.testStart();
+        JsonObject body = app.api.budgetList("2026-10");
+        assertEquals(80, body.get("alertRatio").getAsInt());
+        List<BudgetDTO> items = app.api.budgets(body.get("items"));
+        assertEquals(6, items.size());
+        assertBudget(items, "식비", 350_000, 304_500, 87.0, "ALERT");
+        assertBudget(items, "카페/간식", 60_000, 58_600, 97.7, "ALERT");
+        assertBudget(items, "교통비", 60_000, 49_700, 82.8, "ALERT");
+        assertBudget(items, "쇼핑", 100_000, 145_500, 145.5, "OVER");
+        assertBudget(items, "문화/여가", 60_000, 22_400, 37.3, "NORMAL");
+        assertBudget(items, "술/유흥", 80_000, 149_500, 186.9, "OVER");
+    }
+
+    @Test
+    void budgetUpsertCopyAndIncomeRejected() {
+        app.api.testStart();
+        BudgetDTO created = null;
+        try {
+            ApiException income = assertThrows(ApiException.class, () -> app.api.budgetSet(1, "2026-12", 10_000));
+            assertEquals(ErrorCode.E304, income.getCode());
+            ApiException empty = assertThrows(ApiException.class, () -> app.api.budgetCopy("2026-09"));
+            assertEquals(ErrorCode.E301, empty.getCode());
+            created = app.api.budgetSet(13, "2026-12", 40_000);
+            assertEquals(0.0, created.getUsageRate());
+            assertEquals("NORMAL", created.getStatus());
+            BudgetDTO updated = app.api.budgetSet(13, "2026-12", 50_000);
+            assertEquals(created.getBudgetId(), updated.getBudgetId());
+            assertEquals(50_000, updated.getAmount());
+            JsonObject copied = app.api.budgetCopy("2026-12");
+            assertEquals(4, copied.get("copied").getAsInt());
+            List<BudgetDTO> december = app.api.budgets(copied.get("items"));
+            assertBudget(december, "식비", 330_000, 0, 0.0, "NORMAL");
+            assertBudget(december, "교육/자기계발", 50_000, 0, 0.0, "NORMAL");
+            assertEquals(350_000, app.api.budgets(app.api.budgetList("2026-10").get("items")).stream()
+                    .filter(item -> "식비".equals(item.getCategoryName())).findFirst().orElseThrow().getAmount());
+        } finally {
+            if (created != null) {
+                for (BudgetDTO item : app.api.budgets(app.api.budgetList("2026-12").get("items"))) {
+                    app.api.budgetDelete(item.getBudgetId());
+                }
+            }
+        }
+    }
+
+    private static void assertBudget(List<BudgetDTO> items, String name, int amount, long used,
+                                     double rate, String status) {
+        BudgetDTO item = items.stream().filter(row -> name.equals(row.getCategoryName())).findFirst().orElseThrow();
+        assertEquals(amount, item.getAmount());
+        assertEquals(used, item.getUsed());
+        assertEquals(rate, item.getUsageRate());
+        assertEquals(status, item.getStatus());
     }
 
     private static String env(String key, String fallback) {

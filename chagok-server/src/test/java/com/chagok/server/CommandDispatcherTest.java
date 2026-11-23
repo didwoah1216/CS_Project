@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class CommandDispatcherTest {
-    private final CommandDispatcher dispatcher = new CommandDispatcher(null, null, null, null, null, null, null);
+        private final CommandDispatcher dispatcher = new CommandDispatcher(null, null, null, null, null, null, null, null);
 
     @Test
     void unknownCommandIsE101() {
