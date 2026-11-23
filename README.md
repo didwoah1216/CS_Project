@@ -2,13 +2,13 @@
 
 20대 소비습관 개선 가계부. Java 17, Swing 클라이언트, TCP 9000 JSON Lines 서버, MySQL 8.0.
 
-1단계(FR-2~9)는 로그인 없이 테스트 계정 `test01`로 동작한다.
+1단계(FR-2~9)와 2단계(FR-10~17)는 로그인 없이 테스트 계정 `test01`로 동작한다.
 
 ## 모듈
 
 - `chagok-common` 명령 29개, DTO, 오류 코드
 - `chagok-server` 소켓 서버, JDBC DAO, 경고·또래 비교
-- `chagok-client` SCR-01~04, 설정(경고 기준)
+- `chagok-client` SCR-01~08. 예산, 저축 목표, 검색과 CSV, 통계(6개월 추이·소비 점수·요일 패턴)
 
 ## DB 접속
 

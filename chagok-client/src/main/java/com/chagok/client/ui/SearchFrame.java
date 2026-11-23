@@ -10,6 +10,7 @@ import com.google.gson.JsonObject;
 
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -22,6 +23,9 @@ import javax.swing.text.AbstractDocument;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.time.YearMonth;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -37,6 +41,8 @@ public class SearchFrame extends JFrame {
     private final JTextField maxAmount = new JTextField(8);
     private final JTextField keyword = new JTextField(12);
     private final JLabel count = new JLabel(" ");
+    private final JButton export = new JButton("CSV 내보내기");
+    private Map<String, Object> lastQuery;
     private final DefaultTableModel model = new DefaultTableModel(
             new String[]{"날짜", "구분", "카테고리", "유형", "메모", "금액"}, 0) {
         @Override
@@ -93,7 +99,10 @@ public class SearchFrame extends JFrame {
         line2.add(keyword);
         JButton search = new JButton("검색");
         search.addActionListener(e -> search());
+        export.setEnabled(false);
+        export.addActionListener(e -> export());
         line2.add(search);
+        line2.add(export);
         grid.add(line1);
         grid.add(line2);
         return grid;
@@ -124,6 +133,8 @@ public class SearchFrame extends JFrame {
         if (!keyword.getText().isBlank()) {
             body.put("keyword", keyword.getText().trim());
         }
+        lastQuery = new LinkedHashMap<>(body);
+        export.setEnabled(true);
         new SwingWorker<JsonObject, Void>() {
             @Override
             protected JsonObject doInBackground() {
@@ -160,5 +171,40 @@ public class SearchFrame extends JFrame {
             });
         }
         count.setText("  " + body.get("count").getAsInt() + "건");
+    }
+
+    private void export() {
+        if (lastQuery == null) {
+            Alerts.info(this, "먼저 검색해 주세요");
+            return;
+        }
+        Map<String, Object> query = lastQuery;
+        new SwingWorker<JsonObject, Void>() {
+            @Override
+            protected JsonObject doInBackground() {
+                return app.api.exportCsv(query);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    JsonObject data = get();
+                    JFileChooser chooser = new JFileChooser();
+                    chooser.setSelectedFile(new java.io.File(data.get("filename").getAsString()));
+                    if (chooser.showSaveDialog(SearchFrame.this) != JFileChooser.APPROVE_OPTION) {
+                        return;
+                    }
+                    Files.writeString(chooser.getSelectedFile().toPath(), data.get("csv").getAsString(), StandardCharsets.UTF_8);
+                    Alerts.info(SearchFrame.this, data.get("count").getAsInt() + "건을 저장했습니다");
+                } catch (Exception ex) {
+                    Throwable cause = ex.getCause() == null ? ex : ex.getCause();
+                    if (cause instanceof IOException) {
+                        Alerts.error(SearchFrame.this, (IOException) cause);
+                    } else if (cause instanceof Exception exception) {
+                        Alerts.error(SearchFrame.this, exception);
+                    }
+                }
+            }
+        }.execute();
     }
 }

@@ -8,6 +8,7 @@ import com.chagok.common.protocol.Response;
 import com.chagok.common.util.DateUtil;
 import com.chagok.server.service.BudgetService;
 import com.chagok.server.service.CompareService;
+import com.chagok.server.service.ExportService;
 import com.chagok.server.service.FeedbackService;
 import com.chagok.server.service.GoalService;
 import com.chagok.server.service.JsonFields;
@@ -28,12 +29,11 @@ public class CommandDispatcher {
     private static final Set<Command> PHASE1 = EnumSet.of(
             Command.PING, Command.TEST_START, Command.DUMMY_RESET,
             Command.CATEGORY_LIST, Command.TX_ADD, Command.TX_UPDATE, Command.TX_DELETE,
-            Command.TX_LIST_MONTH, Command.TX_LIST_DAY, Command.TX_SEARCH,
+            Command.TX_LIST_MONTH, Command.TX_LIST_DAY, Command.TX_SEARCH, Command.RECURRING_RUN, Command.EXPORT_CSV,
             Command.STAT_CATEGORY, Command.STAT_MONTHLY, Command.STAT_TREND, Command.STAT_WEEKDAY,
             Command.FEEDBACK_WARNING, Command.FEEDBACK_SCORE, Command.COMPARE_AGE_GROUP,
             Command.SETTING_GET, Command.SETTING_UPDATE,
             Command.BUDGET_SET, Command.BUDGET_LIST, Command.BUDGET_DELETE, Command.BUDGET_COPY,
-            Command.RECURRING_RUN,
             Command.GOAL_ADD, Command.GOAL_LIST, Command.GOAL_DEPOSIT, Command.GOAL_DELETE);
 
     private final TestAccountService testAccountService;
@@ -46,12 +46,13 @@ public class CommandDispatcher {
     private final BudgetService budgetService;
     private final RecurringService recurringService;
     private final GoalService goalService;
+    private final ExportService exportService;
 
     public CommandDispatcher(TestAccountService testAccountService, TransactionService transactionService,
                              StatisticsService statisticsService, FeedbackService feedbackService,
                              CompareService compareService, SettingService settingService,
                              com.chagok.server.dao.CategoryDAO categoryDAO, BudgetService budgetService,
-                             RecurringService recurringService, GoalService goalService) {
+                             RecurringService recurringService, GoalService goalService, ExportService exportService) {
         this.testAccountService = testAccountService;
         this.transactionService = transactionService;
         this.statisticsService = statisticsService;
@@ -62,6 +63,7 @@ public class CommandDispatcher {
         this.budgetService = budgetService;
         this.recurringService = recurringService;
         this.goalService = goalService;
+        this.exportService = exportService;
     }
 
     public Response dispatch(Request request, ClientSession session) {
@@ -87,6 +89,7 @@ public class CommandDispatcher {
                 case TX_LIST_MONTH -> transactionService.listMonth(session.getUserId(), requiredYm(request));
                 case TX_LIST_DAY -> transactionService.listDay(session.getUserId(), requiredText(request, "date", "날짜"));
                 case TX_SEARCH -> transactionService.search(session.getUserId(), request.getData());
+                case EXPORT_CSV -> exportService.export(session.getUserId(), request.getData());
                 case STAT_CATEGORY -> statisticsService.categoryStat(session.getUserId(), requiredYm(request),
                         request.getString("type"));
                 case STAT_MONTHLY -> statisticsService.monthly(session.getUserId(), requiredYm(request));

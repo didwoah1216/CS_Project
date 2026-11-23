@@ -32,7 +32,8 @@ public class ApiClient {
             Command.PING, Command.TEST_START, Command.CATEGORY_LIST, Command.TX_LIST_MONTH, Command.TX_LIST_DAY,
             Command.STAT_CATEGORY, Command.STAT_MONTHLY, Command.FEEDBACK_WARNING, Command.COMPARE_AGE_GROUP,
             Command.SETTING_GET, Command.BUDGET_LIST, Command.RECURRING_RUN, Command.TX_SEARCH,
-            Command.STAT_TREND, Command.FEEDBACK_SCORE, Command.GOAL_LIST, Command.STAT_WEEKDAY);
+            Command.STAT_TREND, Command.FEEDBACK_SCORE, Command.GOAL_LIST, Command.STAT_WEEKDAY,
+            Command.EXPORT_CSV);
     private static final Type CATEGORIES = new TypeToken<List<CategoryDTO>>() { }.getType();
     private static final Type BUDGETS = new TypeToken<List<BudgetDTO>>() { }.getType();
     private static final Type TRANSACTIONS = new TypeToken<List<TransactionDTO>>() { }.getType();
@@ -236,6 +237,10 @@ public class ApiClient {
 
     public List<WeekdayStatDTO> weekdays(JsonElement element) {
         return JsonUtil.fromJson(element, WEEKDAYS);
+    }
+
+    public JsonObject exportCsv(Map<String, Object> fields) {
+        return call(Command.EXPORT_CSV, fields);
     }
 
     private JsonObject call(Command command, Object data) {

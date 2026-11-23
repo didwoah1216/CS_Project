@@ -247,6 +247,23 @@ class Phase1DatabaseTest {
     }
 
     @Test
+    void csvExportUsesTheSameFilterAsSearch() {
+        app.api.testStart();
+        Map<String, Object> food = new LinkedHashMap<>();
+        food.put("from", "2026-10-01");
+        food.put("to", "2026-10-31");
+        food.put("keyword", "학식");
+        food.put("categoryId", 5);
+        JsonObject exported = app.api.exportCsv(food);
+        assertEquals(4, exported.get("count").getAsInt());
+        String csv = exported.get("csv").getAsString();
+        assertTrue(csv.startsWith("\uFEFF날짜,구분,카테고리,유형,금액,메모,반복,자동생성\r\n"));
+        assertTrue(csv.contains("학식"));
+        assertEquals(4, csv.split("\r\n").length - 1);
+        assertTrue(exported.get("filename").getAsString().endsWith(".csv"));
+    }
+
+    @Test
     void peerSampleUnderThreeIsE401() {
         CompareService compare = new CompareService(new UserDAO(), new CategoryDAO(),
                 new TransactionDAO(), new UserSettingDAO());
