@@ -28,7 +28,7 @@ public class CommandDispatcher {
             Command.PING, Command.TEST_START, Command.DUMMY_RESET,
             Command.CATEGORY_LIST, Command.TX_ADD, Command.TX_UPDATE, Command.TX_DELETE,
             Command.TX_LIST_MONTH, Command.TX_LIST_DAY, Command.TX_SEARCH,
-            Command.STAT_CATEGORY, Command.STAT_MONTHLY,
+            Command.STAT_CATEGORY, Command.STAT_MONTHLY, Command.STAT_TREND,
             Command.FEEDBACK_WARNING, Command.COMPARE_AGE_GROUP,
             Command.SETTING_GET, Command.SETTING_UPDATE,
             Command.BUDGET_SET, Command.BUDGET_LIST, Command.BUDGET_DELETE, Command.BUDGET_COPY,
@@ -86,6 +86,7 @@ public class CommandDispatcher {
                 case STAT_CATEGORY -> statisticsService.categoryStat(session.getUserId(), requiredYm(request),
                         request.getString("type"));
                 case STAT_MONTHLY -> statisticsService.monthly(session.getUserId(), requiredYm(request));
+                case STAT_TREND -> statisticsService.trend(session.getUserId(), requiredYm(request));
                 case FEEDBACK_WARNING -> Map.of("warning", feedbackService.evaluate(session, requiredYm(request)));
                 case COMPARE_AGE_GROUP -> Map.of("compare", compareService.compare(
                         session.getUserId(), requiredYm(request), optionalBool(request.getData(), "sameGender")));

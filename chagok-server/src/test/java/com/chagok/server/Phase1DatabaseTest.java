@@ -131,6 +131,22 @@ class Phase1DatabaseTest {
     }
 
     @Test
+    void sixMonthTrendEndsAtTheSelectedMonth() {
+        app.api.testStart();
+        List<com.chagok.common.dto.MonthlyStatDTO> months = app.api.months(app.api.trend("2026-10").get("items"));
+        assertEquals(6, months.size());
+        assertEquals("2026-05", months.get(0).getYm());
+        assertEquals(0, months.get(0).getIncome());
+        assertEquals("2026-09", months.get(4).getYm());
+        assertEquals(751_000, months.get(4).getVariable());
+        assertEquals(1_432_700, months.get(4).getIncome());
+        assertEquals("2026-10", months.get(5).getYm());
+        assertEquals(776_300, months.get(5).getVariable());
+        assertEquals(1_282_300, months.get(5).getIncome());
+        assertEquals(429_400, months.get(5).getFixed());
+    }
+
+    @Test
     void peerSampleUnderThreeIsE401() {
         CompareService compare = new CompareService(new UserDAO(), new CategoryDAO(),
                 new TransactionDAO(), new UserSettingDAO());

@@ -34,6 +34,7 @@ public class StatisticsFrame extends JFrame {
     private final JPanel pieHolder = holder();
     private final JPanel barHolder = holder();
     private final JPanel peerHolder = holder();
+    private final JPanel trendHolder = holder();
     private final JButton prev = new JButton("◀");
     private final JButton next = new JButton("▶");
 
@@ -61,6 +62,7 @@ public class StatisticsFrame extends JFrame {
         diff.setBorder(BorderFactory.createEmptyBorder(8, 12, 12, 12));
         monthTab.add(diff, BorderLayout.SOUTH);
         tabs.addTab("전월 비교", monthTab);
+        tabs.addTab("6개월 추이", trendHolder);
         tabs.addTab("또래 비교", peerHolder);
         add(tabs, BorderLayout.CENTER);
         sameGender.addActionListener(e -> load());
@@ -87,6 +89,7 @@ public class StatisticsFrame extends JFrame {
             private Double diffRate;
             private CompareDTO compare;
             private String peerError;
+            private List<MonthlyStatDTO> trend;
 
             @Override
             protected Void doInBackground() {
@@ -98,6 +101,7 @@ public class StatisticsFrame extends JFrame {
                 previous = app.api.monthlyOf(monthly.get("previous"));
                 diffAmount = monthly.get("diffAmount").getAsLong();
                 diffRate = monthly.get("diffRate").isJsonNull() ? null : monthly.get("diffRate").getAsDouble();
+                trend = app.api.months(app.api.trend(ym).get("items"));
                 try {
                     compare = app.api.compare(ym, gender);
                 } catch (ApiException ex) {
@@ -118,6 +122,7 @@ public class StatisticsFrame extends JFrame {
                     get();
                     showPie();
                     showMonth();
+                    showTrend();
                     showPeer();
                 } catch (Exception ex) {
                     Throwable cause = ex.getCause() == null ? ex : ex.getCause();
@@ -152,6 +157,18 @@ public class StatisticsFrame extends JFrame {
                     diff.setText(String.format("전월 대비 지출 %s%s원 (%s%.1f%%) %s",
                             up ? "+" : "", Money.comma(diffAmount), up ? "+" : "", diffRate, up ? "▲" : "▼"));
                 }
+            }
+
+            private void showTrend() {
+                trendHolder.removeAll();
+                boolean empty = trend == null || trend.stream().allMatch(item -> item.getIncome() == 0 && item.getExpense() == 0);
+                if (empty) {
+                    trendHolder.add(message("표시할 6개월 추이가 없습니다"));
+                } else {
+                    trendHolder.add(ChartFactory.trend(trend), BorderLayout.CENTER);
+                }
+                trendHolder.revalidate();
+                trendHolder.repaint();
             }
 
             private void showPeer() {

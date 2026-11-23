@@ -28,11 +28,13 @@ public class ApiClient {
     private static final Set<Command> IDEMPOTENT = EnumSet.of(
             Command.PING, Command.TEST_START, Command.CATEGORY_LIST, Command.TX_LIST_MONTH, Command.TX_LIST_DAY,
             Command.STAT_CATEGORY, Command.STAT_MONTHLY, Command.FEEDBACK_WARNING, Command.COMPARE_AGE_GROUP,
-            Command.SETTING_GET, Command.BUDGET_LIST, Command.RECURRING_RUN, Command.TX_SEARCH);
+            Command.SETTING_GET, Command.BUDGET_LIST, Command.RECURRING_RUN, Command.TX_SEARCH,
+            Command.STAT_TREND);
     private static final Type CATEGORIES = new TypeToken<List<CategoryDTO>>() { }.getType();
     private static final Type BUDGETS = new TypeToken<List<BudgetDTO>>() { }.getType();
     private static final Type TRANSACTIONS = new TypeToken<List<TransactionDTO>>() { }.getType();
     private static final Type STATS = new TypeToken<List<CategoryStatDTO>>() { }.getType();
+    private static final Type MONTHS = new TypeToken<List<MonthlyStatDTO>>() { }.getType();
 
     private final ServerConnection connection;
     private long sequence;
@@ -166,6 +168,14 @@ public class ApiClient {
 
     public JsonObject search(Map<String, Object> fields) {
         return call(Command.TX_SEARCH, fields);
+    }
+
+    public JsonObject trend(String ym) {
+        return call(Command.STAT_TREND, Map.of("ym", ym));
+    }
+
+    public List<MonthlyStatDTO> months(JsonElement element) {
+        return JsonUtil.fromJson(element, MONTHS);
     }
 
     private JsonObject call(Command command, Object data) {

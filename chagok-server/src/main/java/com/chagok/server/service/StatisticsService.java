@@ -9,6 +9,7 @@ import com.chagok.server.dao.CategoryDAO;
 import com.chagok.server.dao.TransactionDAO;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -80,6 +81,17 @@ public class StatisticsService {
         body.put("previous", previous);
         body.put("diffAmount", diff);
         body.put("diffRate", rate);
+        return body;
+    }
+
+    public Map<String, Object> trend(int userId, String ym) {
+        YearMonth end = DateUtil.parseYm(ym);
+        List<MonthlyStatDTO> items = new ArrayList<>();
+        for (int i = 5; i >= 0; i--) {
+            items.add(transactionDAO.monthlySummary(userId, end.minusMonths(i).toString()));
+        }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("items", items);
         return body;
     }
 }
