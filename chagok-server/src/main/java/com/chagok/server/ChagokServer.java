@@ -1,11 +1,18 @@
 package com.chagok.server;
 
+import com.chagok.server.dao.BudgetDAO;
 import com.chagok.server.dao.CategoryDAO;
+import com.chagok.server.dao.HabitScoreDAO;
+import com.chagok.server.dao.SavingGoalDAO;
 import com.chagok.server.dao.TransactionDAO;
 import com.chagok.server.dao.UserDAO;
 import com.chagok.server.dao.UserSettingDAO;
+import com.chagok.server.service.BudgetService;
 import com.chagok.server.service.CompareService;
+import com.chagok.server.service.ExportService;
 import com.chagok.server.service.FeedbackService;
+import com.chagok.server.service.GoalService;
+import com.chagok.server.service.RecurringService;
 import com.chagok.server.service.SettingService;
 import com.chagok.server.service.StatisticsService;
 import com.chagok.server.service.TestAccountService;
@@ -32,16 +39,22 @@ public class ChagokServer {
         UserDAO users = new UserDAO();
         CategoryDAO categories = new CategoryDAO();
         TransactionDAO transactions = new TransactionDAO();
+        BudgetDAO budgets = new BudgetDAO();
         UserSettingDAO settings = new UserSettingDAO();
         CompareService compare = new CompareService(users, categories, transactions, settings);
+        TransactionService transactionService = new TransactionService(transactions, categories);
         this.dispatcher = new CommandDispatcher(
                 new TestAccountService(users, new DummyDataLoader()),
-                new TransactionService(transactions, categories),
+                transactionService,
                 new StatisticsService(transactions, categories),
-                new FeedbackService(transactions, settings, compare),
+                new FeedbackService(transactions, settings, compare, budgets, new HabitScoreDAO()),
                 compare,
                 new SettingService(settings),
-                categories);
+                categories,
+                new BudgetService(budgets, categories, settings),
+                new RecurringService(transactions),
+                new GoalService(new SavingGoalDAO()),
+                new ExportService(transactionService));
     }
 
     public void start() throws IOException {

@@ -3,12 +3,19 @@ package com.chagok.server.service;
 import com.chagok.common.dto.CategoryDTO;
 import com.chagok.common.dto.CategoryStatDTO;
 import com.chagok.common.dto.MonthlyStatDTO;
+import com.chagok.common.dto.WeekdayStatDTO;
+import com.chagok.common.protocol.BizException;
+import com.chagok.common.protocol.ErrorCode;
 import com.chagok.common.util.DateUtil;
+import com.chagok.common.util.InputValidator;
 import com.chagok.common.util.WarningPolicy;
+import com.chagok.common.util.WeekdayPolicy;
 import com.chagok.server.dao.CategoryDAO;
 import com.chagok.server.dao.TransactionDAO;
+import com.google.gson.JsonObject;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -81,5 +88,75 @@ public class StatisticsService {
         body.put("diffAmount", diff);
         body.put("diffRate", rate);
         return body;
+    }
+
+    public Map<String, Object> trend(int userId, String ym) {
+        YearMonth end = DateUtil.parseYm(ym);
+        List<MonthlyStatDTO> items = new ArrayList<>();
+        for (int i = 5; i >= 0; i--) {
+            items.add(transactionDAO.monthlySummary(userId, end.minusMonths(i).toString()));
+        }
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("items", items);
+        return body;
+    }
+
+    public Map<String, Object> weekday(int userId, JsonObject data) {
+        LocalDate[] range = range(data);
+        Map<Integer, long[]> rows = transactionDAO.weekdayVariable(userId, range[0], range[1]);
+        long total = 0;
+        for (long[] row : rows.values()) {
+            total += row[0];
+        }
+        List<WeekdayStatDTO> items = new ArrayList<>();
+        long weekend = 0;
+        WeekdayStatDTO top = null;
+        for (int dow = 1; dow <= 7; dow++) {
+            long[] row = rows.getOrDefault(dow, new long[]{0, 0});
+            WeekdayStatDTO item = new WeekdayStatDTO();
+            item.setDow(dow);
+            item.setName(WeekdayPolicy.name(dow));
+            item.setAmount(row[0]);
+            item.setCount((int) row[1]);
+            item.setRatio(total == 0 ? 0 : WarningPolicy.round1(row[0] * 100.0 / total));
+            items.add(item);
+            if (WeekdayPolicy.weekend(dow)) {
+                weekend += row[0];
+            }
+            if (top == null || item.getAmount() > top.getAmount()) {
+                top = item;
+            }
+        }
+        double weekendRatio = total == 0 ? 0 : WarningPolicy.round1(weekend * 100.0 / total);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("items", items);
+        body.put("total", total);
+        body.put("weekendAmount", weekend);
+        body.put("weekendRatio", weekendRatio);
+        body.put("concentrated", WeekdayPolicy.concentrated(weekendRatio) && total > 0);
+        body.put("message", WeekdayPolicy.message(total, top == null ? "" : top.getName(),
+                top == null ? 0 : top.getRatio(), weekendRatio));
+        return body;
+    }
+
+    private static LocalDate[] range(JsonObject data) {
+        boolean hasFrom = JsonFields.present(data, "from") && !JsonFields.text(data, "from").isBlank();
+        boolean hasTo = JsonFields.present(data, "to") && !JsonFields.text(data, "to").isBlank();
+        if (hasFrom || hasTo) {
+            if (!hasFrom || !hasTo) {
+                throw new BizException(ErrorCode.E102, "시작일과 종료일을 함께 입력해야 합니다");
+            }
+            LocalDate from = InputValidator.requireDate(JsonFields.text(data, "from"), true);
+            LocalDate to = InputValidator.requireDate(JsonFields.text(data, "to"), true);
+            if (from.isAfter(to)) {
+                throw new BizException(ErrorCode.E103, "시작일이 종료일보다 늦습니다");
+            }
+            return new LocalDate[]{from, to};
+        }
+        if (!JsonFields.present(data, "ym") || JsonFields.text(data, "ym").isBlank()) {
+            throw new BizException(ErrorCode.E102, "월(ym) 또는 기간이 필요합니다");
+        }
+        String ym = JsonFields.text(data, "ym").trim();
+        return DateUtil.monthRange(ym);
     }
 }

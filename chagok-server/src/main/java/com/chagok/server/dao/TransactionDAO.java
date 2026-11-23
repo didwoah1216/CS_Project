@@ -2,6 +2,7 @@ package com.chagok.server.dao;
 
 import com.chagok.common.dto.MonthlyStatDTO;
 import com.chagok.common.dto.TransactionDTO;
+import com.chagok.common.util.SearchPolicy;
 import com.chagok.server.util.DBConnection;
 import com.chagok.server.util.DbException;
 
@@ -129,6 +130,65 @@ public class TransactionDAO {
         }
     }
 
+    public List<TransactionDTO> templates(int userId) {
+        String sql = SELECT + """
+                 WHERE t.user_id=? AND t.is_auto=0 AND t.repeat_cycle <> 'NONE'
+                 ORDER BY t.transaction_id
+                """;
+        try (Connection connection = DBConnection.get();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                List<TransactionDTO> items = new ArrayList<>();
+                while (rs.next()) {
+                    items.add(TxMapper.map(rs));
+                }
+                return items;
+            }
+        } catch (SQLException ex) {
+            throw new DbException(ex);
+        }
+    }
+
+    public boolean existsChild(int parentId, LocalDate date) {
+        String sql = "SELECT 1 FROM `transaction` WHERE parent_tx_id=? AND transaction_date=? LIMIT 1";
+        try (Connection connection = DBConnection.get();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, parentId);
+            ps.setDate(2, Date.valueOf(date));
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException ex) {
+            throw new DbException(ex);
+        }
+    }
+
+    public int insertAuto(int userId, TransactionDTO template, LocalDate date) {
+        String sql = """
+                INSERT INTO `transaction`
+                (user_id, category_id, amount, transaction_date, fixed_type, repeat_cycle, memo, parent_tx_id, is_auto)
+                VALUES (?,?,?,?,?,'NONE',?,?,1)
+                """;
+        try (Connection connection = DBConnection.get();
+             PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setInt(1, userId);
+            ps.setInt(2, template.getCategoryId());
+            ps.setInt(3, template.getAmount());
+            ps.setDate(4, Date.valueOf(date));
+            ps.setString(5, template.getFixedType());
+            ps.setString(6, template.getMemo());
+            ps.setInt(7, template.getTransactionId());
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                keys.next();
+                return keys.getInt(1);
+            }
+        } catch (SQLException ex) {
+            throw new DbException(ex);
+        }
+    }
+
     public List<TransactionDTO> listBetween(int userId, LocalDate from, LocalDate to) {
         String sql = SELECT + """
                  WHERE t.user_id=? AND t.transaction_date BETWEEN ? AND ?
@@ -145,6 +205,84 @@ public class TransactionDAO {
                     items.add(TxMapper.map(rs));
                 }
                 return items;
+            }
+        } catch (SQLException ex) {
+            throw new DbException(ex);
+        }
+    }
+
+    public List<TransactionDTO> search(int userId, LocalDate from, LocalDate to, Integer categoryId,
+                                       Integer minAmount, Integer maxAmount, String keyword,
+                                       String type, String fixedType) {
+        StringBuilder sql = new StringBuilder(SELECT);
+        sql.append(" WHERE t.user_id=?");
+        List<Object> args = new ArrayList<>();
+        args.add(userId);
+        if (from != null) {
+            sql.append(" AND t.transaction_date BETWEEN ? AND ?");
+            args.add(Date.valueOf(from));
+            args.add(Date.valueOf(to));
+        }
+        if (categoryId != null) {
+            sql.append(" AND t.category_id=?");
+            args.add(categoryId);
+        }
+        if (minAmount != null) {
+            sql.append(" AND t.amount>=?");
+            args.add(minAmount);
+        }
+        if (maxAmount != null) {
+            sql.append(" AND t.amount<=?");
+            args.add(maxAmount);
+        }
+        if (keyword != null) {
+            sql.append(" AND (t.memo LIKE ? ESCAPE '\\\\' OR c.name LIKE ? ESCAPE '\\\\')");
+            String pattern = SearchPolicy.likePattern(keyword);
+            args.add(pattern);
+            args.add(pattern);
+        }
+        if (type != null) {
+            sql.append(" AND c.type=?");
+            args.add(type);
+        }
+        if (fixedType != null) {
+            sql.append(" AND t.fixed_type=?");
+            args.add(fixedType);
+        }
+        sql.append(" ORDER BY t.transaction_date DESC, t.transaction_id DESC");
+        try (Connection connection = DBConnection.get();
+             PreparedStatement ps = connection.prepareStatement(sql.toString())) {
+            bindArgs(ps, args);
+            try (ResultSet rs = ps.executeQuery()) {
+                List<TransactionDTO> items = new ArrayList<>();
+                while (rs.next()) {
+                    items.add(TxMapper.map(rs));
+                }
+                return items;
+            }
+        } catch (SQLException ex) {
+            throw new DbException(ex);
+        }
+    }
+
+    public Map<Integer, long[]> weekdayVariable(int userId, LocalDate from, LocalDate to) {
+        String sql = """
+                SELECT DAYOFWEEK(transaction_date) AS d, SUM(amount) AS amount, COUNT(*) AS cnt
+                FROM `transaction`
+                WHERE user_id=? AND fixed_type='VARIABLE' AND transaction_date BETWEEN ? AND ?
+                GROUP BY d
+                """;
+        try (Connection connection = DBConnection.get();
+             PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.setDate(2, Date.valueOf(from));
+            ps.setDate(3, Date.valueOf(to));
+            try (ResultSet rs = ps.executeQuery()) {
+                Map<Integer, long[]> rows = new HashMap<>();
+                while (rs.next()) {
+                    rows.put(rs.getInt("d"), new long[]{rs.getLong("amount"), rs.getLong("cnt")});
+                }
+                return rows;
             }
         } catch (SQLException ex) {
             throw new DbException(ex);
@@ -245,6 +383,19 @@ public class TransactionDAO {
             }
         } catch (SQLException ex) {
             throw new DbException(ex);
+        }
+    }
+
+    private static void bindArgs(PreparedStatement ps, List<Object> args) throws SQLException {
+        int index = 1;
+        for (Object arg : args) {
+            if (arg instanceof Integer number) {
+                ps.setInt(index++, number);
+            } else if (arg instanceof Date date) {
+                ps.setDate(index++, date);
+            } else {
+                ps.setString(index++, String.valueOf(arg));
+            }
         }
     }
 

@@ -14,7 +14,11 @@ public final class Alerts {
         String message = ex.getMessage() == null ? "요청을 처리하지 못했습니다" : ex.getMessage();
         if (ex instanceof ApiException api) {
             if (api.getCode() == ErrorCode.E301 || api.getCode() == ErrorCode.E302) {
-                message = "삭제되었거나 접근할 수 없는 내역입니다";
+                String server = api.getMessage();
+                boolean generic = server == null || server.isBlank()
+                        || server.equals(ErrorCode.E301.getDefaultMessage())
+                        || server.equals(ErrorCode.E302.getDefaultMessage());
+                message = generic ? "삭제되었거나 접근할 수 없는 내역입니다" : server;
             } else if (api.getCode() == ErrorCode.E401) {
                 message = "비교할 같은 연령대 사용자가 부족함";
             } else if (api.getCode() == ErrorCode.E500 || api.getCode() == ErrorCode.E501) {

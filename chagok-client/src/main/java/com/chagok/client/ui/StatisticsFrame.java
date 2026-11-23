@@ -8,6 +8,8 @@ import com.chagok.client.util.Money;
 import com.chagok.common.dto.CategoryStatDTO;
 import com.chagok.common.dto.CompareDTO;
 import com.chagok.common.dto.MonthlyStatDTO;
+import com.chagok.common.dto.ScoreDTO;
+import com.chagok.common.dto.WeekdayStatDTO;
 import com.chagok.common.protocol.ErrorCode;
 import com.google.gson.JsonObject;
 
@@ -34,6 +36,10 @@ public class StatisticsFrame extends JFrame {
     private final JPanel pieHolder = holder();
     private final JPanel barHolder = holder();
     private final JPanel peerHolder = holder();
+    private final JPanel trendHolder = holder();
+    private final JPanel scoreHolder = holder();
+    private final JPanel weekdayHolder = holder();
+    private final JLabel weekdayNote = new JLabel(" ");
     private final JButton prev = new JButton("◀");
     private final JButton next = new JButton("▶");
 
@@ -61,6 +67,13 @@ public class StatisticsFrame extends JFrame {
         diff.setBorder(BorderFactory.createEmptyBorder(8, 12, 12, 12));
         monthTab.add(diff, BorderLayout.SOUTH);
         tabs.addTab("전월 비교", monthTab);
+        tabs.addTab("6개월 추이", trendHolder);
+        tabs.addTab("소비 점수", scoreHolder);
+        JPanel weekdayTab = new JPanel(new BorderLayout());
+        weekdayTab.add(weekdayHolder, BorderLayout.CENTER);
+        weekdayNote.setBorder(BorderFactory.createEmptyBorder(8, 12, 12, 12));
+        weekdayTab.add(weekdayNote, BorderLayout.SOUTH);
+        tabs.addTab("요일 패턴", weekdayTab);
         tabs.addTab("또래 비교", peerHolder);
         add(tabs, BorderLayout.CENTER);
         sameGender.addActionListener(e -> load());
@@ -87,6 +100,10 @@ public class StatisticsFrame extends JFrame {
             private Double diffRate;
             private CompareDTO compare;
             private String peerError;
+            private List<MonthlyStatDTO> trend;
+            private ScoreDTO score;
+            private List<WeekdayStatDTO> weekdays;
+            private String weekdayMessage;
 
             @Override
             protected Void doInBackground() {
@@ -98,6 +115,11 @@ public class StatisticsFrame extends JFrame {
                 previous = app.api.monthlyOf(monthly.get("previous"));
                 diffAmount = monthly.get("diffAmount").getAsLong();
                 diffRate = monthly.get("diffRate").isJsonNull() ? null : monthly.get("diffRate").getAsDouble();
+                trend = app.api.months(app.api.trend(ym).get("items"));
+                score = app.api.score(ym, true);
+                JsonObject weekday = app.api.weekday(ym);
+                weekdays = app.api.weekdays(weekday.get("items"));
+                weekdayMessage = weekday.get("message").getAsString();
                 try {
                     compare = app.api.compare(ym, gender);
                 } catch (ApiException ex) {
@@ -118,6 +140,9 @@ public class StatisticsFrame extends JFrame {
                     get();
                     showPie();
                     showMonth();
+                    showTrend();
+                    showScore();
+                    showWeekday();
                     showPeer();
                 } catch (Exception ex) {
                     Throwable cause = ex.getCause() == null ? ex : ex.getCause();
@@ -152,6 +177,63 @@ public class StatisticsFrame extends JFrame {
                     diff.setText(String.format("전월 대비 지출 %s%s원 (%s%.1f%%) %s",
                             up ? "+" : "", Money.comma(diffAmount), up ? "+" : "", diffRate, up ? "▲" : "▼"));
                 }
+            }
+
+            private void showTrend() {
+                trendHolder.removeAll();
+                boolean empty = trend == null || trend.stream().allMatch(item -> item.getIncome() == 0 && item.getExpense() == 0);
+                if (empty) {
+                    trendHolder.add(message("표시할 6개월 추이가 없습니다"));
+                } else {
+                    trendHolder.add(ChartFactory.trend(trend), BorderLayout.CENTER);
+                }
+                trendHolder.revalidate();
+                trendHolder.repaint();
+            }
+
+            private void showScore() {
+                scoreHolder.removeAll();
+                if (score == null) {
+                    scoreHolder.add(message("점수를 계산하지 못했습니다"));
+                } else {
+                    StringBuilder html = new StringBuilder("<html><div style='padding:12px;font-family:sans-serif'>");
+                    html.append("<div style='font-size:22px'><b>").append(score.getScore()).append("점 ")
+                            .append(score.getGrade()).append("</b></div>");
+                    if (score.getFlexRatio() != null) {
+                        html.append("<div>유동비율 ").append(String.format("%.1f", score.getFlexRatio())).append("%</div>");
+                    }
+                    if (score.getItems() != null) {
+                        for (ScoreDTO.ScoreItem item : score.getItems()) {
+                            html.append("<div>").append(item.getName()).append(" ")
+                                    .append(item.getPoint()).append(" / ").append(item.getMax()).append("</div>");
+                        }
+                    }
+                    html.append("<div style='margin-top:8px'>").append(score.getMessage() == null ? "" : score.getMessage())
+                            .append("</div>");
+                    if (score.getPrevScore() != null) {
+                        html.append("<div>저장된 전월 점수 ").append(score.getPrevScore()).append("점</div>");
+                    }
+                    html.append("</div></html>");
+                    JLabel label = new JLabel(html.toString());
+                    label.setVerticalAlignment(JLabel.TOP);
+                    scoreHolder.add(label, BorderLayout.NORTH);
+                }
+                scoreHolder.revalidate();
+                scoreHolder.repaint();
+            }
+
+            private void showWeekday() {
+                weekdayHolder.removeAll();
+                boolean empty = weekdays == null || weekdays.stream().allMatch(item -> item.getAmount() == 0);
+                if (empty) {
+                    weekdayHolder.add(message("이 달의 유동지출이 없습니다"));
+                    weekdayNote.setText(" ");
+                } else {
+                    weekdayHolder.add(ChartFactory.weekday(weekdays), BorderLayout.CENTER);
+                    weekdayNote.setText(weekdayMessage == null ? " " : weekdayMessage);
+                }
+                weekdayHolder.revalidate();
+                weekdayHolder.repaint();
             }
 
             private void showPeer() {

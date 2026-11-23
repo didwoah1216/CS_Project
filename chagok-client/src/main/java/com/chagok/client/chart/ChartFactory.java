@@ -3,6 +3,7 @@ package com.chagok.client.chart;
 import com.chagok.client.util.UiFonts;
 import com.chagok.common.dto.CategoryStatDTO;
 import com.chagok.common.dto.MonthlyStatDTO;
+import com.chagok.common.dto.WeekdayStatDTO;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.labels.StandardPieSectionLabelGenerator;
@@ -10,6 +11,7 @@ import org.jfree.chart.plot.CategoryPlot;
 import org.jfree.chart.plot.PiePlot;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.renderer.category.BarRenderer;
+import org.jfree.chart.renderer.category.LineAndShapeRenderer;
 import org.jfree.data.category.DefaultCategoryDataset;
 import org.jfree.data.general.DefaultPieDataset;
 
@@ -90,6 +92,44 @@ public final class ChartFactory {
         BarRenderer renderer = (BarRenderer) plot.getRenderer();
         renderer.setSeriesPaint(0, MINE);
         renderer.setSeriesPaint(1, PEER);
+        return panel(chart);
+    }
+
+    public static ChartPanel trend(List<MonthlyStatDTO> months) {
+        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+        for (MonthlyStatDTO month : months) {
+            String label = month.getYm() == null ? "" : month.getYm();
+            dataset.addValue(month.getIncome(), "수입", label);
+            dataset.addValue(month.getFixed(), "고정지출", label);
+            dataset.addValue(month.getVariable(), "유동지출", label);
+        }
+        JFreeChart chart = org.jfree.chart.ChartFactory.createLineChart(
+                "6개월 추이", "", "원", dataset, PlotOrientation.VERTICAL, true, true, false);
+        applyFont(chart);
+        CategoryPlot plot = chart.getCategoryPlot();
+        plot.setBackgroundPaint(Color.WHITE);
+        plot.setOutlineVisible(false);
+        LineAndShapeRenderer renderer = (LineAndShapeRenderer) plot.getRenderer();
+        renderer.setSeriesPaint(0, new Color(0x1565C0));
+        renderer.setSeriesPaint(1, new Color(0x7A6A3D));
+        renderer.setSeriesPaint(2, new Color(0xE07A3D));
+        renderer.setDefaultShapesVisible(true);
+        return panel(chart);
+    }
+
+    public static ChartPanel weekday(List<WeekdayStatDTO> items) {
+        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+        for (WeekdayStatDTO item : items) {
+            dataset.addValue(item.getAmount(), "유동지출", item.getName());
+        }
+        JFreeChart chart = org.jfree.chart.ChartFactory.createBarChart(
+                "요일별 유동지출", "", "원", dataset, PlotOrientation.VERTICAL, false, true, false);
+        applyFont(chart);
+        CategoryPlot plot = chart.getCategoryPlot();
+        plot.setBackgroundPaint(Color.WHITE);
+        plot.setOutlineVisible(false);
+        BarRenderer renderer = (BarRenderer) plot.getRenderer();
+        renderer.setSeriesPaint(0, new Color(0x1F6F6A));
         return panel(chart);
     }
 

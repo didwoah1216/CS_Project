@@ -6,9 +6,13 @@ import com.chagok.common.protocol.ErrorCode;
 import com.chagok.common.protocol.Request;
 import com.chagok.common.protocol.Response;
 import com.chagok.common.util.DateUtil;
+import com.chagok.server.service.BudgetService;
 import com.chagok.server.service.CompareService;
+import com.chagok.server.service.ExportService;
 import com.chagok.server.service.FeedbackService;
+import com.chagok.server.service.GoalService;
 import com.chagok.server.service.JsonFields;
+import com.chagok.server.service.RecurringService;
 import com.chagok.server.service.SettingService;
 import com.chagok.server.service.StatisticsService;
 import com.chagok.server.service.TestAccountService;
@@ -25,10 +29,12 @@ public class CommandDispatcher {
     private static final Set<Command> PHASE1 = EnumSet.of(
             Command.PING, Command.TEST_START, Command.DUMMY_RESET,
             Command.CATEGORY_LIST, Command.TX_ADD, Command.TX_UPDATE, Command.TX_DELETE,
-            Command.TX_LIST_MONTH, Command.TX_LIST_DAY,
-            Command.STAT_CATEGORY, Command.STAT_MONTHLY,
-            Command.FEEDBACK_WARNING, Command.COMPARE_AGE_GROUP,
-            Command.SETTING_GET, Command.SETTING_UPDATE);
+            Command.TX_LIST_MONTH, Command.TX_LIST_DAY, Command.TX_SEARCH, Command.RECURRING_RUN, Command.EXPORT_CSV,
+            Command.STAT_CATEGORY, Command.STAT_MONTHLY, Command.STAT_TREND, Command.STAT_WEEKDAY,
+            Command.FEEDBACK_WARNING, Command.FEEDBACK_SCORE, Command.COMPARE_AGE_GROUP,
+            Command.SETTING_GET, Command.SETTING_UPDATE,
+            Command.BUDGET_SET, Command.BUDGET_LIST, Command.BUDGET_DELETE, Command.BUDGET_COPY,
+            Command.GOAL_ADD, Command.GOAL_LIST, Command.GOAL_DEPOSIT, Command.GOAL_DELETE);
 
     private final TestAccountService testAccountService;
     private final TransactionService transactionService;
@@ -37,11 +43,16 @@ public class CommandDispatcher {
     private final CompareService compareService;
     private final SettingService settingService;
     private final com.chagok.server.dao.CategoryDAO categoryDAO;
+    private final BudgetService budgetService;
+    private final RecurringService recurringService;
+    private final GoalService goalService;
+    private final ExportService exportService;
 
     public CommandDispatcher(TestAccountService testAccountService, TransactionService transactionService,
                              StatisticsService statisticsService, FeedbackService feedbackService,
                              CompareService compareService, SettingService settingService,
-                             com.chagok.server.dao.CategoryDAO categoryDAO) {
+                             com.chagok.server.dao.CategoryDAO categoryDAO, BudgetService budgetService,
+                             RecurringService recurringService, GoalService goalService, ExportService exportService) {
         this.testAccountService = testAccountService;
         this.transactionService = transactionService;
         this.statisticsService = statisticsService;
@@ -49,6 +60,10 @@ public class CommandDispatcher {
         this.compareService = compareService;
         this.settingService = settingService;
         this.categoryDAO = categoryDAO;
+        this.budgetService = budgetService;
+        this.recurringService = recurringService;
+        this.goalService = goalService;
+        this.exportService = exportService;
     }
 
     public Response dispatch(Request request, ClientSession session) {
@@ -73,14 +88,29 @@ public class CommandDispatcher {
                 case TX_DELETE -> transactionService.delete(session.getUserId(), request.getData());
                 case TX_LIST_MONTH -> transactionService.listMonth(session.getUserId(), requiredYm(request));
                 case TX_LIST_DAY -> transactionService.listDay(session.getUserId(), requiredText(request, "date", "날짜"));
+                case TX_SEARCH -> transactionService.search(session.getUserId(), request.getData());
+                case EXPORT_CSV -> exportService.export(session.getUserId(), request.getData());
                 case STAT_CATEGORY -> statisticsService.categoryStat(session.getUserId(), requiredYm(request),
                         request.getString("type"));
                 case STAT_MONTHLY -> statisticsService.monthly(session.getUserId(), requiredYm(request));
+                case STAT_TREND -> statisticsService.trend(session.getUserId(), requiredYm(request));
+                case STAT_WEEKDAY -> statisticsService.weekday(session.getUserId(), request.getData());
                 case FEEDBACK_WARNING -> Map.of("warning", feedbackService.evaluate(session, requiredYm(request)));
+                case FEEDBACK_SCORE -> Map.of("score", feedbackService.score(
+                        session.getUserId(), requiredYm(request), Boolean.TRUE.equals(optionalBool(request.getData(), "save"))));
                 case COMPARE_AGE_GROUP -> Map.of("compare", compareService.compare(
                         session.getUserId(), requiredYm(request), optionalBool(request.getData(), "sameGender")));
                 case SETTING_GET -> settingService.get(session.getUserId());
                 case SETTING_UPDATE -> settingService.update(session.getUserId(), request.getData());
+                case BUDGET_SET -> budgetService.set(session.getUserId(), request.getData());
+                case BUDGET_LIST -> budgetService.list(session.getUserId(), requiredYm(request));
+                case BUDGET_DELETE -> budgetService.delete(session.getUserId(), request.getData());
+                case BUDGET_COPY -> budgetService.copy(session.getUserId(), requiredYm(request));
+                case RECURRING_RUN -> recurringService.run(session.getUserId(), requiredYm(request));
+                case GOAL_ADD -> goalService.add(session.getUserId(), request.getData());
+                case GOAL_LIST -> goalService.list(session.getUserId());
+                case GOAL_DEPOSIT -> goalService.deposit(session.getUserId(), request.getData());
+                case GOAL_DELETE -> goalService.delete(session.getUserId(), request.getData());
                 default -> throw new BizException(ErrorCode.E304, "이후 단계에서 제공되는 기능입니다");
             };
             String message = switch (command) {
@@ -88,6 +118,13 @@ public class CommandDispatcher {
                 case TX_DELETE -> "삭제 완료";
                 case DUMMY_RESET -> "더미 데이터를 초기화했습니다";
                 case SETTING_UPDATE -> "설정을 저장했습니다";
+                case BUDGET_SET -> "저장 완료";
+                case BUDGET_DELETE -> "삭제 완료";
+                case BUDGET_COPY -> "전월 예산을 복사했습니다";
+                case RECURRING_RUN -> "반복 내역을 생성했습니다";
+                case GOAL_ADD -> "저장 완료";
+                case GOAL_DEPOSIT -> "입금을 반영했습니다";
+                case GOAL_DELETE -> "삭제 완료";
                 default -> "";
             };
             return Response.ok(request, data, message);
